@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QIMA MEX PEO — Late Report ITL Form</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --qima-blue: #003087;
+    --orange: #FFC000;
+    --yellow: #FFFF00;
+    --border: #d0d7e3;
+    --red: #dc3545;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; font-size: 13px; background: #eef1f7; color: #222; }
+
+  header {
+    background: var(--qima-blue); color: #fff; padding: 16px 32px;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  }
+  header .logo { font-size: 22px; font-weight: 700; letter-spacing: 2px; }
+  header .title { font-size: 15px; opacity: .85; }
+  header .date-badge {
+    margin-left: auto; background: rgba(255,255,255,.15);
+    border-radius: 6px; padding: 4px 12px; font-size: 12px;
+  }
+  .upload-btn-wrap { position: relative; margin-left: 16px; }
+  .upload-btn {
+    display: flex; align-items: center; gap: 7px;
+    background: #fff; color: var(--qima-blue);
+    border: none; border-radius: 6px;
+    padding: 7px 16px; font-size: 13px; font-weight: 700;
+    cursor: pointer; transition: background .15s; white-space: nowrap;
+  }
+  .upload-btn:hover { background: #e8eef7; }
+  .upload-btn input[type="file"] {
+    position: absolute; inset: 0; opacity: 0;
+    cursor: pointer; width: 100%; height: 100%;
+  }
+  .upload-status {
+    font-size: 11.5px; opacity: .85; margin-left: 8px;
+    max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+
+  .container { max-width: 1700px; margin: 24px auto; padding: 0 20px; }
+  .instructions {
+    background: #fff; border-left: 4px solid var(--qima-blue);
+    padding: 12px 18px; border-radius: 6px; margin-bottom: 20px;
+    font-size: 12.5px; line-height: 1.7; color: #444;
+  }
+  .instructions b { color: var(--qima-blue); }
+  .filter-bar {
+    display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center;
+  }
+  .filter-bar select, .filter-bar input {
+    border: 1px solid var(--border); border-radius: 5px;
+    padding: 5px 10px; font-size: 12px; background: #fff;
+  }
+  .filter-bar label { font-size: 12px; color: #555; }
+  .btn {
+    padding: 7px 18px; border-radius: 5px; border: none;
+    cursor: pointer; font-size: 13px; font-weight: 600; transition: opacity .15s;
+  }
+  .btn:hover { opacity: .85; }
+  .btn-primary { background: var(--qima-blue); color: #fff; }
+  .btn-success { background: #28a745; color: #fff; }
+  .btn-outline { background: #fff; color: var(--qima-blue); border: 1.5px solid var(--qima-blue); }
+  .progress-bar {
+    background: #e0e6ef; border-radius: 8px; height: 10px; margin-bottom: 20px; overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%; background: var(--qima-blue); border-radius: 8px; transition: width .3s; width: 0%;
+  }
+  .progress-label { font-size: 11.5px; color: #666; margin-bottom: 6px; }
+
+  table {
+    width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden;
+    box-shadow: 0 1px 6px rgba(0,0,0,.08);
+  }
+  th {
+    background: var(--qima-blue); color: #fff; padding: 9px 10px;
+    text-align: left; font-size: 12px; white-space: nowrap; position: sticky; top: 0; z-index: 10;
+  }
+  td { padding: 7px 10px; border-bottom: 1px solid #edf0f5; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #f0f4fc; }
+  tr.filled td { background: #f0fff4 !important; }
+
+  .days-badge {
+    display: inline-block; padding: 2px 8px; border-radius: 10px; font-weight: 700; font-size: 12px;
+  }
+  .days-orange { background: var(--orange); color: #333; }
+  .days-yellow { background: var(--yellow); color: #333; }
+  .days-white  { background: #eee; color: #555; }
+
+  .status-dot {
+    display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px;
+  }
+  .dot-pending { background: #bbb; }
+  .dot-filled  { background: #28a745; }
+
+  select.reason-sel,
+  input.comment-inp,
+  select.responsible-sel,
+  input.itlpm-inp {
+    width: 100%; border: 1px solid var(--border); border-radius: 4px;
+    padding: 4px 7px; font-size: 12px; background: #fff;
+  }
+  select.reason-sel:focus,
+  input.comment-inp:focus,
+  select.responsible-sel:focus,
+  input.itlpm-inp:focus {
+    outline: 2px solid var(--qima-blue); border-color: transparent;
+  }
+
+  /* readonly style */
+  .cell-readonly {
+    display: block; width: 100%;
+    border: 1px solid var(--border); border-radius: 4px;
+    padding: 4px 7px; font-size: 12px;
+    background: #f3f5f8; color: #444; font-weight: 600;
+  }
+  .cell-na {
+    display: block; width: 100%;
+    border: 1px solid var(--border); border-radius: 4px;
+    padding: 4px 7px; font-size: 12px;
+    background: #f3f5f8; color: #999; font-style: italic; text-align: center;
+  }
+  .cell-dash {
+    color: #bbb; font-style: italic; font-size: 12px;
+  }
+
+  input.comment-inp.error     { border-color: var(--red) !important; background: #fff5f5; }
+  select.responsible-sel.error{ border-color: var(--red) !important; background: #fff5f5; }
+  input.itlpm-inp.error       { border-color: var(--red) !important; background: #fff5f5; }
+
+  .field-warning { font-size: 10.5px; color: var(--red); margin-top: 3px; display: none; }
+  .field-warning.show { display: block; }
+
+  .summary-panel {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--qima-blue); color: #fff;
+    padding: 12px 32px; display: flex; align-items: center; gap: 20px;
+    box-shadow: 0 -4px 16px rgba(0,0,0,.15); z-index: 100;
+  }
+  .summary-panel .stat { text-align: center; }
+  .summary-panel .stat .num { font-size: 22px; font-weight: 700; }
+  .summary-panel .stat .lbl { font-size: 11px; opacity: .75; }
+  .summary-panel .actions { margin-left: auto; display: flex; gap: 10px; }
+
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,.5); z-index: 200; align-items: center; justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: #fff; border-radius: 10px; padding: 28px 32px;
+    max-width: 820px; width: 95%; max-height: 85vh; overflow-y: auto;
+    box-shadow: 0 8px 40px rgba(0,0,0,.2);
+  }
+  .modal h3 { color: var(--qima-blue); margin-bottom: 16px; font-size: 16px; }
+  .email-preview {
+    background: #f7f9fc; border: 1px solid var(--border); border-radius: 6px;
+    padding: 14px; font-size: 12px; white-space: pre-wrap; line-height: 1.6;
+    max-height: 340px; overflow-y: auto; font-family: 'Courier New', monospace;
+  }
+  .modal-actions { display: flex; gap: 10px; margin-top: 18px; justify-content: flex-end; }
+
+  .copied-toast {
+    position: fixed; top: 80px; left: 50%; transform: translateX(-50%);
+    background: #28a745; color: #fff; padding: 10px 24px; border-radius: 20px;
+    font-size: 13px; display: none; z-index: 300; font-weight: 600;
+    box-shadow: 0 4px 12px rgba(0,0,0,.2);
+  }
+  .empty-state { text-align: center; padding: 60px 20px; color: #888; }
+  .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+  .empty-state p { font-size: 14px; line-height: 1.8; }
+  .empty-state b { color: var(--qima-blue); }
+  .hint { font-size: 11px; color: #777; margin-top: 8px; }
+
+  @media (max-width: 768px) {
+    .container { padding: 0 8px; }
+    .filter-bar { flex-direction: column; align-items: stretch; }
+    th, td { font-size: 11px; padding: 5px 7px; }
+    .summary-panel { flex-wrap: wrap; padding: 10px 16px; }
+    .summary-panel .actions { margin-left: 0; width: 100%; }
+    header { padding: 12px 16px; }
+    .upload-btn-wrap { margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">QIMA</div>
+  <div class="title">MEX PEO Service — Late Report Update Form</div>
+  <div class="date-badge" id="headerDate">No file loaded</div>
+  <div class="upload-btn-wrap">
+    <button class="upload-btn">
+      📂 Upload Late Report
+      <input type="file" accept=".xlsx,.xls,.csv" onchange="handleFileUpload(event)">
+    </button>
+  </div>
+  <span class="upload-status" id="uploadStatus"></span>
+</header>
+
+<div class="container">
+  <div class="instructions">
+    <b>使用方法：</b>点击右上角 <b>📂 Upload Late Report</b> 上传文件。选择 <b>Other</b> 时 Comment 和 Responsible 为必填。
+    责任方为 <b>PM / AM</b> 时，ITL/PM 栏需手动填写。
+    <br>
+    <b>Instructions:</b> Upload file top-right. <b>Other</b> requires Comment + Responsible.
+    <b>PM / AM</b> responsible requires manual ITL/PM input.
+  </div>
+
+  <div class="filter-bar">
+    <label>筛选 / Filter:</label>
+    <select id="filterOffice" onchange="applyFilters()"><option value="">All Offices</option></select>
+    <select id="filterStatus" onchange="applyFilters()">
+      <option value="">All Status</option>
+      <option value="pending">Pending</option>
+      <option value="filled">Filled</option>
+    </select>
+    <select id="filterDays" onchange="applyFilters()">
+      <option value="">All Days</option>
+      <option value="orange">≥7 days</option>
+      <option value="yellow">3-6 days</option>
+      <option value="white">0-2 days</option>
+    </select>
+    <input type="text" id="searchBox" placeholder="Search order / client..."
+           oninput="applyFilters()" style="min-width:180px">
+  </div>
+
+  <div class="progress-label" id="progressLabel">0 / 0 orders filled</div>
+  <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+
+  <div style="overflow-x:auto; margin-bottom:90px;">
+    <table id="mainTable">
+      <thead>
+        <tr>
+          <th style="width:28px">#</th>
+          <th>QIMA Ref.</th>
+          <th>Client</th>
+          <th>Last Day</th>
+          <th>Days</th>
+          <th>Inspector(s)</th>
+          <th>Office</th>
+          <th style="min-width:140px">ITL/PM</th>
+          <th style="min-width:300px">原因 / Reason <span style="font-weight:300;font-size:10px">(required)</span></th>
+          <th style="min-width:200px">备注 / Comment</th>
+          <th style="min-width:160px">责任方 / Responsible</th>
+          <th style="width:80px">Status</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody">
+        <tr><td colspan="12">
+          <div class="empty-state">
+            <div class="icon">📂</div>
+            <p>No data loaded yet.<br>
+               Click <b>📂 Upload Late Report</b> to upload your <b>.xlsx</b> or <b>.csv</b> file.</p>
+          </div>
+        </td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="summary-panel">
+  <div class="stat"><div class="num" id="statTotal">0</div><div class="lbl">Total Orders</div></div>
+  <div class="stat"><div class="num" id="statFilled">0</div><div class="lbl">Filled</div></div>
+  <div class="stat"><div class="num" id="statPending">0</div><div class="lbl">Pending</div></div>
+  <div class="stat"><div class="num" id="statOrange" style="color:#FFC000">0</div><div class="lbl">≥7 Days</div></div>
+  <div class="actions">
+    <button class="btn btn-outline" onclick="saveDraft()">💾 Save Draft</button>
+    <button class="btn btn-success" onclick="openSubmitModal()">✉️ Submit → Generate Draft Email</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="submitModal">
+  <div class="modal">
+    <h3>📧 Draft Email Preview</h3>
+    <p style="font-size:12px;color:#666;margin-bottom:12px">
+      Generated from filled rows. Copy and paste into Outlook/email.
+    </p>
+    <div class="email-preview" id="emailPreview"></div>
+    <div class="hint">提示：本地 HTML 版本，复制内容后手动发送邮件。</div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="copyEmail()">📋 Copy Email Content</button>
+      <button class="btn btn-success" onclick="downloadFilledJson()">⬇️ Export Filled Data</button>
+    </div>
+  </div>
+</div>
+
+<div class="copied-toast" id="copiedToast">✓ Copied!</div>
+
+<script>
+// ── Reason options ────────────────────────────────────────────
+const REASON_OPTIONS = [
+  "",
+  "waiting for IP update to re-submit the report / 等待IP 更新后重新提交报告",
+  "waiting for final PL / 等待最终装箱单",
+  "Waiting for final PL and booking update / 等待最终装箱单和 booking更新",
+  "Waiting for booking update / 等待 booking更新",
+  "Waiting for seal picture, need support from PM / 等待封条照片，需要 PM 协助",
+  "The container still not loding yet, pls change the last day of inspection / 集装箱还未开始装货，请更改最终验货日期",
+  "The order will be cancelled, pls change the status / 订单将被取消，请更改状态",
+  "Waiting for AM to update booking / 等待 AM更新 booking 信息",
+  "Waiting for AM to confirm how to submit the report / 等待AM确认如何提交报告",
+  "the booking was updated today, will finish tomorrow / booking信息今天已更新,将于明天完成",
+  "the final PL received this morning, will finish tomorrow / 今天上午已收到最终装箱单，将于明天完成",
+  "the pictures were provided by supplier today, will finish today / 供应商今天已提供照片，今天完成",
+  "one report was not submitted successfully, will submit again today / 有一份报告未能成功提交，今天会重新提交",
+  "will finish today/tomorrow / 今天/明天完成",
+  "too many report, will finish tomorrow / 报告太多，将于明天完成",
+  "The inspector OT yesterday, will finsh today / 验货员昨天加班了，今天完成",
+  "Other / 其他"
+];
+
+// Auto-responsible for non-Other reasons
+const RESPONSIBLE_AUTO_MAP = {
+  "waiting for IP update to re-submit the report / 等待IP 更新后重新提交报告": "PM",
+  "waiting for final PL / 等待最终装箱单":                                      "PM",
+  "Waiting for final PL and booking update / 等待最终装箱单和 booking更新":      "PM",
+  "Waiting for booking update / 等待 booking更新":                               "PM",
+  "Waiting for seal picture, need support from PM / 等待封条照片，需要 PM 协助":  "PM",
+  "The container still not loding yet, pls change the last day of inspection / 集装箱还未开始装货，请更改最终验货日期": "PM",
+  "The order will be cancelled, pls change the status / 订单将被取消，请更改状态": "PM",
+  "Waiting for AM to update booking / 等待 AM更新 booking 信息":                  "AM",
+  "Waiting for AM to confirm how to submit the report / 等待AM确认如何提交报告":  "AM",
+  "the booking was updated today, will finish tomorrow / booking信息今天已更新,将于明天完成":           "Inspector",
+  "the final PL received this morning, will finish tomorrow / 今天上午已收到最终装箱单，将于明天完成": "Inspector",
+  "the pictures were provided by supplier today, will finish today / 供应商今天已提供照片，今天完成": "Inspector",
+  "one report was not submitted successfully, will submit again today / 有一份报告未能成功提交，今天会重新提交": "Inspector",
+  "will finish today/tomorrow / 今天/明天完成":                                   "Inspector",
+  "too many report, will finish tomorrow / 报告太多，将于明天完成":                "Inspector",
+  "The inspector OT yesterday, will finsh today / 验货员昨天加班了，今天完成":    "Inspector"
+};
+
+const RESPONSIBLE_OPTIONS = ["","PM","AM","Inspector","PM/Inspector","AM/Inspector","IT"];
+
+// ── ITL/PM logic ──────────────────────────────────────────────
+// Responsible values that get AUTO itlpm from office map
+const RESP_AUTO_ITLPM  = ["Inspector","PM/Inspector","AM/Inspector"];
+// Responsible values that require MANUAL itlpm input
+const RESP_MANUAL_ITLPM = ["PM","AM"];
+// Responsible values that show "N/A"
+const RESP_NA_ITLPM    = ["IT"];
+
+// Office → ITL/PM name map  (lowercase keys)
+const OFFICE_ITLPM_MAP = {
+  "shenzhen office":  "Jason Lee",
+  "guangzhou office": "Jason Lee",
+  "hongkong office":  "Jason Lee",
+  "hong kong office": "Jason Lee",
+  "qingdao office":   "Jason Lee",
+  "beijing office":   "Jason Lee",
+  "tianjin office":   "Jason Lee",
+  "tianjing office":  "Jason Lee",
+  "anhui office":     "Jason Lee",
+  "shanghai office":  "Joe Cai",
+  "xiamen office":    "Nina Wu",
+  "taiwan office":    "Nina Wu",
+  "nanjing office":   "Jason/Joe",
+  "ningbo office":    "Nina Wu & John Shen",
+  "hangzhou office":  "Nina Wu & John Shen"
+};
+
+// Returns: { mode: "auto"|"manual"|"na"|"none", value: string }
+function getItlpmInfo(office, responsible) {
+  if (!responsible) return { mode: "none", value: "" };
+  if (RESP_NA_ITLPM.includes(responsible))
+    return { mode: "na", value: "N/A" };
+  if (RESP_AUTO_ITLPM.includes(responsible)) {
+    const name = OFFICE_ITLPM_MAP[(office||"").toLowerCase().trim()] || "";
+    return { mode: "auto", value: name };
+  }
+  if (RESP_MANUAL_ITLPM.includes(responsible))
+    return { mode: "manual", value: "" };
+  return { mode: "none", value: "" };
+}
+
+const IS_OTHER = r => r === "Other / 其他";
+
+// ── isFilled logic ────────────────────────────────────────────
+function isFilled(order) {
+  if (!(order.reason||"").trim()) return false;
+
+  const resp = IS_OTHER(order.reason)
+    ? (order.responsible||"")
+    : getResponsibleAuto(order.reason);
+
+  // Other: comment + responsible required
+  if (IS_OTHER(order.reason)) {
+    if (!(order.comment||"").trim()) return false;
+    if (!resp) return false;
+  }
+
+  // ITL/PM manual input required for PM/AM
+  if (RESP_MANUAL_ITLPM.includes(resp)) {
+    if (!(order.itlpm||"").trim()) return false;
+  }
+
+  return true;
+}
+
+function getResponsibleAuto(reason) { return RESPONSIBLE_AUTO_MAP[reason] || ""; }
+
+// ── State ─────────────────────────────────────────────────────
+let ORDERS = [], filteredOrders = [], REPORT_DATE = "", STORAGE_KEY = "late_report_draft_default";
+
+// ── Helpers ───────────────────────────────────────────────────
+function escapeHtml(s) {
+  return String(s??"")
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+function escapeJs(s) {
+  return String(s??"").replace(/\\/g,"\\\\").replace(/'/g,"\\'");
+}
+function getDayClass(d) { return d>=7?"orange":d>=3?"yellow":"white"; }
+function getDayBadge(d) {
+  const map={orange:"days-orange",yellow:"days-yellow",white:"days-white"};
+  return `<span class="days-badge ${map[getDayClass(d)]}">${d}</span>`;
+}
+
+// ── File Upload ───────────────────────────────────────────────
+function handleFileUpload(event) {
+  const file = event.target.files[0]; if (!file) return;
+  const nm = file.name.match(/(\d{4})(\d{2})(\d{2})/);
+  REPORT_DATE = nm ? `${nm[1]}-${nm[2]}-${nm[3]}` : new Date().toISOString().slice(0,10);
+  STORAGE_KEY = "late_report_draft_" + REPORT_DATE.replace(/-/g,"_");
+  document.getElementById("uploadStatus").textContent = `📄 ${file.name}`;
+  document.getElementById("headerDate").textContent   = REPORT_DATE;
+  const ext = file.name.split(".").pop().toLowerCase();
+  const reader = new FileReader();
+  if (ext==="csv") { reader.onload=e=>parseCSV(e.target.result); reader.readAsText(file,"UTF-8"); }
+  else             { reader.onload=e=>parseXLSX(e.target.result); reader.readAsArrayBuffer(file); }
+  event.target.value = "";
+}
+
+function parseXLSX(buf) {
+  try {
+    const wb = XLSX.read(buf,{type:"array",cellDates:true});
+    buildOrders(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:""}));
+  } catch(e) { showToast("✗ Failed to parse Excel"); console.error(e); }
+}
+
+function parseCSV(text) {
+  try {
+    const lines = text.trim().split("\n"); let hi=0;
+    for(let i=0;i<lines.length;i++){if(lines[i].toLowerCase().includes("qima ref")){hi=i;break;}}
+    const headers = parseCSVLine(lines[hi]).map(h=>h.trim());
+    const rows = [];
+    for(let i=hi+1;i<lines.length;i++){
+      if(!lines[i].trim()) continue;
+      const vals=parseCSVLine(lines[i]); const obj={};
+      headers.forEach((h,idx)=>{obj[h]=(vals[idx]||"").trim();}); rows.push(obj);
+    }
+    buildOrders(rows);
+  } catch(e) { showToast("✗ Failed to parse CSV"); console.error(e); }
+}
+
+function parseCSVLine(line) {
+  const res=[]; let cur="",inQ=false;
+  for(const ch of line){
+    if(ch==='"'){inQ=!inQ;}
+    else if(ch===","&&!inQ){res.push(cur);cur="";}
+    else{cur+=ch;}
+  }
+  res.push(cur); return res;
+}
+
+function findCol(row, candidates) {
+  const keys=Object.keys(row);
+  for(const c of candidates){
+    const f=keys.find(k=>k.toLowerCase().trim()===c.toLowerCase().trim());
+    if(f!==undefined) return row[f]??"";
+  }
+  return "";
+}
+
+function buildOrders(rows) {
+  const data=rows.filter(r=>String(findCol(r,["QIMA Ref.","QIMA Ref"])).trim().startsWith("Q"));
+  if(!data.length){showToast("✗ No valid order rows found");return;}
+  ORDERS=data.map(r=>({
+    ref:        String(findCol(r,["QIMA Ref.","QIMA Ref"])).trim(),
+    client:     String(findCol(r,["Client name","Client Name"])).trim(),
+    lastDay:    formatDate(findCol(r,["Last Day Of Inspection","Last Day"])),
+    days:       parseInt(findCol(r,["Days","days"]),10)||0,
+    inspectors: String(findCol(r,["Responsible name","Responsible Name","Inspector","Inspectors"])).trim(),
+    office:     String(findCol(r,["Leader","leader","Office","office"])).trim(),
+    reason:"", comment:"", responsible:"", itlpm:""
+  }));
+  filteredOrders=[...ORDERS];
+  loadFromLocal(); renderOfficeOptions(); applyFilters();
+  showToast(`✅ Loaded ${ORDERS.length} orders`);
+}
+
+function formatDate(val) {
+  if(!val) return "";
+  if(val instanceof Date){
+    const d=String(val.getDate()).padStart(2,"0");
+    const m=val.toLocaleString("en-US",{month:"short"});
+    const y=String(val.getFullYear()).slice(-2);
+    return `${d}-${m}-${y}`;
+  }
+  const s=String(val).trim();
+  const mm=s.match(/^(\d{2})-(\d{2})-(\d{2})$/);
+  if(mm){
+    const months=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    return `${mm[2]}-${months[parseInt(mm[1],10)-1]}-${mm[3]}`;
+  }
+  return s;
+}
+
+// ── Office filter ─────────────────────────────────────────────
+function renderOfficeOptions() {
+  const sel=document.getElementById("filterOffice");
+  const offices=[...new Set(ORDERS.map(o=>(o.office||"").trim()).filter(Boolean))].sort();
+  sel.innerHTML=`<option value="">All Offices</option>`+
+    offices.map(o=>`<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join("");
+}
+
+// ── Table render ──────────────────────────────────────────────
+function renderTable(data) {
+  const tbody=document.getElementById("tableBody");
+  if(!ORDERS.length){
+    tbody.innerHTML=`<tr><td colspan="12"><div class="empty-state">
+      <div class="icon">📂</div>
+      <p>No data loaded yet.<br>Click <b>📂 Upload Late Report</b> to upload your file.</p>
+    </div></td></tr>`;
+    updateStats(); return;
+  }
+  if(!data.length){
+    tbody.innerHTML=`<tr><td colspan="12"
+      style="text-align:center;padding:40px;color:#888;">No matching orders found.</td></tr>`;
+    updateStats(); return;
+  }
+
+  tbody.innerHTML = data.map((order,idx) => {
+    const isOther       = IS_OTHER(order.reason);
+    const commentError  = isOther && !(order.comment||"").trim();
+    const respError     = isOther && !(order.responsible||"").trim();
+    const filled        = isFilled(order);
+
+    // Effective responsible
+    const effectiveResp = isOther
+      ? (order.responsible||"")
+      : getResponsibleAuto(order.reason);
+
+    // ── ITL/PM cell ──
+    const itlInfo = getItlpmInfo(order.office, effectiveResp);
+    let itlpmCell = "";
+    if (!effectiveResp) {
+      // No responsible selected yet
+      itlpmCell = `<span class="cell-dash">—</span>`;
+    } else if (itlInfo.mode === "na") {
+      itlpmCell = `<span class="cell-na">N/A</span>`;
+    } else if (itlInfo.mode === "auto") {
+      itlpmCell = `<span class="cell-readonly">${escapeHtml(itlInfo.value||"—")}</span>`;
+    } else if (itlInfo.mode === "manual") {
+      const itlpmError = !(order.itlpm||"").trim();
+      itlpmCell = `
+        <input class="itlpm-inp ${itlpmError?"error":""}" type="text"
+               value="${escapeHtml(order.itlpm||"")}"
+               placeholder="Enter ITL/PM name..."
+               oninput="updateField('${escapeJs(order.ref)}','itlpm',this.value)">
+        <div class="field-warning ${itlpmError?"show":""}">⚠️ Required</div>`;
+    } else {
+      itlpmCell = `<span class="cell-dash">—</span>`;
+    }
+
+    // ── Responsible cell ──
+    const responsibleCell = isOther
+      ? `<select class="responsible-sel ${respError?"error":""}"
+                 onchange="updateResponsible('${escapeJs(order.ref)}',this.value)">
+           ${RESPONSIBLE_OPTIONS.map(opt=>
+             `<option value="${escapeHtml(opt)}" ${order.responsible===opt?"selected":""}>
+               ${escapeHtml(opt||"— Select —")}</option>`
+           ).join("")}
+         </select>
+         <div class="field-warning ${respError?"show":""}">⚠️ Required</div>`
+      : `<span class="cell-readonly">${escapeHtml(getResponsibleAuto(order.reason)||"—")}</span>`;
+
+    return `
+    <tr class="${filled?"filled":""}">
+      <td>${idx+1}</td>
+      <td style="font-family:monospace;font-size:11.5px;white-space:nowrap">${escapeHtml(order.ref)}</td>
+      <td style="max-width:190px;font-size:12px" title="${escapeHtml(order.client)}">${escapeHtml(order.client)}</td>
+      <td style="white-space:nowrap;font-size:12px">${escapeHtml(order.lastDay)}</td>
+      <td>${getDayBadge(order.days)}</td>
+      <td style="max-width:160px;font-size:11px;color:#555"
+          title="${escapeHtml(order.inspectors)}">${escapeHtml(order.inspectors)||"-"}</td>
+      <td style="font-size:11.5px;white-space:nowrap">${escapeHtml(order.office)}</td>
+      <td>${itlpmCell}</td>
+      <td>
+        <select class="reason-sel" onchange="updateReason('${escapeJs(order.ref)}',this.value)">
+          ${REASON_OPTIONS.map(r=>
+            `<option value="${escapeHtml(r)}" ${order.reason===r?"selected":""}>
+              ${escapeHtml(r||"— Select reason —")}</option>`
+          ).join("")}
+        </select>
+      </td>
+      <td>
+        <input class="comment-inp ${commentError?"error":""}" type="text"
+               value="${escapeHtml(order.comment)}"
+               placeholder="${isOther?"Required / 必填":"Optional..."}"
+               oninput="updateField('${escapeJs(order.ref)}','comment',this.value)">
+        <div class="field-warning ${commentError?"show":""}">⚠️ Required when reason is Other</div>
+      </td>
+      <td>${responsibleCell}</td>
+      <td style="text-align:center">
+        <span class="status-dot ${filled?"dot-filled":"dot-pending"}"></span>
+        <span style="font-size:11px;color:#666">${filled?"Filled":"Pending"}</span>
+      </td>
+    </tr>`;
+  }).join("");
+
+  updateStats();
+}
+
+// ── Update handlers ───────────────────────────────────────────
+function updateReason(ref, value) {
+  const order=ORDERS.find(o=>o.ref===ref); if(!order) return;
+  order.reason = value;
+  if (!IS_OTHER(value)) {
+    order.responsible = getResponsibleAuto(value);
+  } else {
+    order.responsible = "";
+  }
+  // reset itlpm when reason changes
+  order.itlpm = "";
+  saveToLocal(); applyFilters();
+}
+
+function updateResponsible(ref, value) {
+  const order=ORDERS.find(o=>o.ref===ref); if(!order) return;
+  order.responsible = value;
+  // reset itlpm when responsible changes
+  order.itlpm = "";
+  saveToLocal(); applyFilters();
+}
+
+function updateField(ref, field, value) {
+  const order=ORDERS.find(o=>o.ref===ref); if(!order) return;
+  order[field] = value;
+  saveToLocal(); applyFilters();
+}
+
+// ── Filters ───────────────────────────────────────────────────
+function applyFilters() {
+  const office    = document.getElementById("filterOffice").value.trim().toLowerCase();
+  const status    = document.getElementById("filterStatus").value.trim().toLowerCase();
+  const dayFilter = document.getElementById("filterDays").value.trim().toLowerCase();
+  const keyword   = document.getElementById("searchBox").value.trim().toLowerCase();
+  filteredOrders  = ORDERS.filter(o=>{
+    const om=!office    ||(o.office||"").toLowerCase()===office;
+    const sm=!status    ||(status==="filled"?isFilled(o):!isFilled(o));
+    const dm=!dayFilter ||getDayClass(o.days)===dayFilter;
+    const km=!keyword   ||`${o.ref} ${o.client} ${o.inspectors} ${o.office}`.toLowerCase().includes(keyword);
+    return om&&sm&&dm&&km;
+  });
+  renderTable(filteredOrders);
+}
+
+// ── Stats ─────────────────────────────────────────────────────
+function updateStats() {
+  const total=ORDERS.length, filled=ORDERS.filter(isFilled).length;
+  document.getElementById("statTotal").textContent   = total;
+  document.getElementById("statFilled").textContent  = filled;
+  document.getElementById("statPending").textContent = total-filled;
+  document.getElementById("statOrange").textContent  = ORDERS.filter(o=>o.days>=7).length;
+  document.getElementById("progressLabel").textContent = `${filled} / ${total} orders filled`;
+  document.getElementById("progressFill").style.width  = total?`${filled/total*100}%`:"0%";
+}
+
+// ── Storage ───────────────────────────────────────────────────
+function saveToLocal() { localStorage.setItem(STORAGE_KEY,JSON.stringify(ORDERS)); }
+function loadFromLocal() {
+  const raw=localStorage.getItem(STORAGE_KEY); if(!raw) return;
+  try {
+    const saved=JSON.parse(raw); if(!Array.isArray(saved)) return;
+    for(const item of saved){
+      const o=ORDERS.find(o=>o.ref===item.ref);
+      if(o){
+        o.reason      = item.reason      ||"";
+        o.comment     = item.comment     ||"";
+        o.responsible = item.responsible ||"";
+        o.itlpm       = item.itlpm       ||"";
+      }
+    }
+  } catch(e){ console.warn("Draft load failed",e); }
+}
+function saveDraft(){ saveToLocal(); showToast("✓ Draft saved!"); }
+
+// ── Email / Export ────────────────────────────────────────────
+function generateEmailContent() {
+  const rows=ORDERS.filter(isFilled);
+  if(!rows.length) return "No filled orders yet.";
+  let t=`Subject: Late Report Update - ${REPORT_DATE}\n\nDear Team,\n\n`;
+  t+="Please find below the updated late report information:\n\n";
+  rows.forEach((o,i)=>{
+    const effectiveResp = IS_OTHER(o.reason) ? o.responsible : getResponsibleAuto(o.reason);
+    const itlInfo = getItlpmInfo(o.office, effectiveResp);
+    const itlpmDisplay = itlInfo.mode==="manual"
+      ? (o.itlpm||"-")
+      : (itlInfo.value||"-");
+    t+=`${i+1}. QIMA Ref.:    ${o.ref}\n`;
+    t+=`   Client:        ${o.client}\n`;
+    t+=`   Last Day:      ${o.lastDay}\n`;
+    t+=`   Days:          ${o.days}\n`;
+    t+=`   Inspector(s):  ${o.inspectors||"-"}\n`;
+    t+=`   Office:        ${o.office||"-"}\n`;
+    t+=`   ITL/PM:        ${itlpmDisplay}\n`;
+    t+=`   Reason:        ${o.reason||"-"}\n`;
+    t+=`   Comment:       ${o.comment||"-"}\n`;
+    t+=`   Responsible:   ${effectiveResp||"-"}\n\n`;
+  });
+  t+="Best regards,\nITL";
+  return t;
+}
+function openSubmitModal() {
+  if(!ORDERS.length){showToast("⚠️ Please upload a file first");return;}
+  document.getElementById("emailPreview").textContent=generateEmailContent();
+  document.getElementById("submitModal").classList.add("open");
+}
+function closeModal(){ document.getElementById("submitModal").classList.remove("open"); }
+function copyEmail(){
+  navigator.clipboard.writeText(document.getElementById("emailPreview").textContent)
+    .then(()=>showToast("✓ Copied!")).catch(()=>showToast("✗ Copy failed"));
+}
+function downloadFilledJson(){
+  if(!ORDERS.length){showToast("⚠️ No data");return;}
+  const blob=new Blob([JSON.stringify(ORDERS.filter(isFilled),null,2)],
+    {type:"application/json;charset=utf-8"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download=`late-report-filled-${REPORT_DATE}.json`;
+  a.click(); URL.revokeObjectURL(a.href);
+}
+
+// ── Toast ─────────────────────────────────────────────────────
+function showToast(msg){
+  const t=document.getElementById("copiedToast");
+  t.textContent=msg; t.style.display="block";
+  setTimeout(()=>t.style.display="none",2000);
+}
+
+// ── Init ──────────────────────────────────────────────────────
+window.onclick=e=>{if(e.target===document.getElementById("submitModal"))closeModal();};
+renderTable([]);
+</script>
+</body>
+</html>
