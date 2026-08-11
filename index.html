@@ -248,11 +248,11 @@ const RESP_AUTO = {
   "too many report, will finish tomorrow / 报告太多，将于明天完成":"Inspector",
   "The inspector OT yesterday, will finsh today / 验货员昨天加班了，今天完成":"Inspector"
 };
-const RESP_OPTS       = ["","PM","AM","Inspector","PM/Inspector","AM/Inspector","IT"];
-const RESP_AUTO_ITLPM = ["Inspector","PM/Inspector","AM/Inspector"];
+const RESP_OPTS         = ["","PM","AM","Inspector","PM/Inspector","AM/Inspector","IT"];
+const RESP_AUTO_ITLPM   = ["Inspector","PM/Inspector","AM/Inspector"];
 const RESP_MANUAL_ITLPM = ["PM","AM"];
-const RESP_NA_ITLPM   = ["IT"];
-const OFFICE_ITLPM    = {
+const RESP_NA_ITLPM     = ["IT"];
+const OFFICE_ITLPM      = {
   "shenzhen office":"Jason Lee","guangzhou office":"Jason Lee",
   "hongkong office":"Jason Lee","hong kong office":"Jason Lee",
   "qingdao office":"Jason Lee","beijing office":"Jason Lee",
@@ -285,6 +285,9 @@ function isFilled(o){
 // ── State ─────────────────────────────────────────────────────
 let ORDERS=[], filtered=[], REPORT_DATE="", pollTimer=null, saving=false, lastHash="";
 
+// ── 防抖计时器 ────────────────────────────────────────────────
+let debounceTimer = null;
+
 // ── Sync helpers ──────────────────────────────────────────────
 function setSyncUI(state, label){
   document.getElementById("syncDot").className="sync-dot"+(state==="syncing"?" syncing":state==="error"?" error":"");
@@ -315,15 +318,10 @@ async function pollCloud(){
     const json=await r.json();
     const rec=json.record||{};
     if(!rec.orders||!rec.orders.length){ setSyncUI("ok","🟢 Connected"); return; }
-
     const remoteHash=hashOrders(rec.orders);
     if(remoteHash===lastHash){ setSyncUI("ok","🟢 Synced"); return; }
-
-    // Remote has newer data — apply it
     lastHash=remoteHash;
-
     if(ORDERS.length===0){
-      // No local data yet — fully load from cloud
       ORDERS=rec.orders;
       REPORT_DATE=rec.reportDate||"";
       document.getElementById("headerDate").textContent=REPORT_DATE||"—";
@@ -331,7 +329,6 @@ async function pollCloud(){
       filtered=[...ORDERS];
       renderOfficeOptions();
     } else {
-      // Merge filled fields only
       rec.orders.forEach(co=>{
         const lo=ORDERS.find(o=>o.ref===co.ref);
         if(lo){
@@ -444,9 +441,9 @@ function renderTable(data){
     const itl=itlpmInfo(o.office,effResp);
 
     let itlCell="";
-    if(!effResp)              itlCell=`<span class="cell-dash">—</span>`;
-    else if(itl.mode==="na")  itlCell=`<span class="cell-na">N/A</span>`;
-    else if(itl.mode==="auto")itlCell=`<span class="cell-readonly">${escH(itl.val||"—")}</span>`;
+    if(!effResp)               itlCell=`<span class="cell-dash">—</span>`;
+    else if(itl.mode==="na")   itlCell=`<span class="cell-na">N/A</span>`;
+    else if(itl.mode==="auto") itlCell=`<span class="cell-readonly">${escH(itl.val||"—")}</span>`;
     else if(itl.mode==="manual"){
       const ie=!(o.itlpm||"").trim();
       itlCell=`<input class="itlpm-inp ${ie?"error":""}" type="text" value="${escH(o.itlpm||"")}" placeholder="Enter ITL/PM name..." oninput="updF('${escJ(o.ref)}','itlpm',this.value)"><div class="field-warning ${ie?"show":""}">⚠️ Required</div>`;
@@ -484,9 +481,18 @@ function updResp(ref,val){
   const o=ORDERS.find(x=>x.ref===ref); if(!o) return;
   o.responsible=val; o.itlpm=""; saveCloud(); applyFilters();
 }
-function updF(ref,field,val){
+
+// ── 防抖：输入时不立刻保存，停止输入2秒后再保存 ──────────────
+function updF(ref, field, val){
   const o=ORDERS.find(x=>x.ref===ref); if(!o) return;
-  o[field]=val; saveCloud(); applyFilters();
+  o[field]=val;
+  // 立刻更新统计，不重新渲染整张表（避免输入框失焦）
+  updateStats();
+  // 清除上一个计时器，重新计时
+  clearTimeout(debounceTimer);
+  debounceTimer=setTimeout(()=>{
+    saveCloud();
+  }, 2000);
 }
 
 // ── Filters / Stats ───────────────────────────────────────────
