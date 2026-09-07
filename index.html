@@ -101,14 +101,10 @@
   .empty-state p { font-size: 14px; line-height: 1.8; }
   .empty-state b { color: var(--qima-blue); }
   .hint { font-size: 11px; color: #777; margin-top: 8px; }
-
-  /* Date confirm modal */
   .date-modal { background: #fff; border-radius: 10px; padding: 24px 28px; max-width: 380px; width: 95%; box-shadow: 0 8px 40px rgba(0,0,0,.2); }
   .date-modal h3 { color: var(--qima-blue); margin-bottom: 12px; font-size: 15px; }
   .date-modal input[type="date"] { width: 100%; border: 1.5px solid var(--border); border-radius: 6px; padding: 8px 12px; font-size: 14px; margin: 8px 0 16px; }
   .date-modal input[type="date"]:focus { outline: 2px solid var(--qima-blue); border-color: transparent; }
-  .date-modal .hint { margin-bottom: 0; }
-
   @media (max-width: 768px) {
     .container { padding: 0 8px; }
     .filter-bar { flex-direction: column; align-items: stretch; }
@@ -131,7 +127,6 @@
     </button>
   </div>
   <span class="upload-status" id="uploadStatus"></span>
-  <!-- 导出按钮 -->
   <button class="export-btn" id="exportBtn" onclick="exportToExcel()" disabled>
     ⬇️ Export Today's Data
   </button>
@@ -143,13 +138,22 @@
 
 <div class="container">
   <div class="instructions">
-    <b>使用方法：</b>上传文件后自动同步，所有人实时看到同一份数据。选 <b>Other</b> 时 Comment + Responsible 必填。责任方为 <b>PM/AM</b> 时 ITL/PM 需手动填写。填写完成后点击 <b>⬇️ Export Today's Data</b> 导出当天数据到Excel保存备份。
+    <b>使用方法：</b>上传文件后自动同步，所有人实时看到同一份数据。选 <b>Other</b> 时 Comment + Responsible 必填。责任方为 <b>PM/AM</b> 时 ITL/PM 需手动填写。填写完成后点击 <b>⬇️ Export Today's Data</b> 导出备份。
     <br>
     <b>Instructions:</b> Upload file → Team fills in → Click <b>⬇️ Export Today's Data</b> to save backup.
   </div>
   <div class="filter-bar">
     <label>筛选 / Filter:</label>
     <select id="filterOffice" onchange="applyFilters()"><option value="">All Offices</option></select>
+    <select id="filterResponsible" onchange="applyFilters()">
+      <option value="">All Responsible</option>
+      <option value="PM">PM</option>
+      <option value="AM">AM</option>
+      <option value="Inspector">Inspector</option>
+      <option value="PM/Inspector">PM/Inspector</option>
+      <option value="AM/Inspector">AM/Inspector</option>
+      <option value="IT">IT</option>
+    </select>
     <select id="filterStatus" onchange="applyFilters()">
       <option value="">All Status</option>
       <option value="pending">Pending</option>
@@ -205,13 +209,12 @@
   </div>
 </div>
 
-<!-- Date confirm modal -->
 <div class="modal-overlay" id="dateModal">
   <div class="date-modal">
     <h3>📅 Confirm Report Date</h3>
     <p style="font-size:12px;color:#666;margin-bottom:4px">请确认/修改这份 Late Report 的日期：</p>
     <input type="date" id="dateInput">
-    <p class="hint">💡 日期将用于数据导出时的文件命名和记录</p>
+    <p class="hint">💡 日期将用于导出文件命名和 Due date 列</p>
     <div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end">
       <button class="btn btn-outline" onclick="cancelUpload()">Cancel</button>
       <button class="btn btn-primary" onclick="confirmDate()">✅ Confirm</button>
@@ -219,7 +222,6 @@
   </div>
 </div>
 
-<!-- Email modal -->
 <div class="modal-overlay" id="submitModal">
   <div class="modal">
     <h3>📧 Draft Email Preview</h3>
@@ -343,23 +345,51 @@ function buildRespCell(o){
   return `<span class="cell-readonly">${escH(autoResp(o.reason)||"—")}</span>`;
 }
 
+// ── Export helpers ────────────────────────────────────────────
+function getEffectiveResponsible(o){
+  return IS_OTHER(o.reason)?(o.responsible||""):autoResp(o.reason);
+}
+
+function getExportStatusDetail(o){
+  if(IS_OTHER(o.reason)) return o.comment||"";
+  return o.reason||"";
+}
+
+function getExportResponsibleName(o){
+  const effResp = getEffectiveResponsible(o);
+  if(RESP_AUTO_ITLPM.includes(effResp)) return o.inspectors||"";
+  if(RESP_MANUAL_ITLPM.includes(effResp)) return o.itlpm||"";
+  return "";
+}
+
+// ★ Leader 规则
+function getExportLeader(o){
+  const effResp = getEffectiveResponsible(o);
+  if(effResp === "PM") return "Vicky/Emily";
+  if(effResp === "AM") return "Thalia/Emilio/Diana";
+  if(RESP_AUTO_ITLPM.includes(effResp)){
+    // Inspector/PM-Inspector/AM-Inspector → ITL/PM 填写内容
+    const itl = itlpmInfo(o.office, effResp);
+    return itl.mode==="auto" ? (itl.val||"") : (o.itlpm||"");
+  }
+  if(effResp === "IT") return "";
+  return "";
+}
+
 // ── State ─────────────────────────────────────────────────────
 let ORDERS=[], filtered=[], REPORT_DATE="", pollTimer=null, saving=false, lastHash="";
 let debounceTimer=null, isTyping=false;
 let pendingFileData=null, pendingFileName="";
 
-// ── Sync helpers ──────────────────────────────────────────────
 function setSyncUI(state,label){
   document.getElementById("syncDot").className="sync-dot"+(state==="syncing"?" syncing":state==="error"?" error":"");
   document.getElementById("syncLabel").textContent=label;
 }
 function hashOrders(orders){ return JSON.stringify(orders.map(o=>o.ref+o.reason+o.comment+o.responsible+o.itlpm)); }
 
-// ── Cloud SAVE ────────────────────────────────────────────────
 async function saveCloud(){
   if(saving) return;
-  saving=true;
-  setSyncUI("syncing","🟡 Saving...");
+  saving=true; setSyncUI("syncing","🟡 Saving...");
   try{
     const body=JSON.stringify({reportDate:REPORT_DATE,fileName:document.getElementById("uploadStatus").textContent.replace("📄 ",""),orders:ORDERS});
     const r=await fetch(API,{method:"PUT",headers:HEADERS_WRITE,body});
@@ -370,7 +400,6 @@ async function saveCloud(){
   finally{ saving=false; }
 }
 
-// ── Cloud LOAD ────────────────────────────────────────────────
 async function pollCloud(){
   if(isTyping){ setSyncUI("ok","🟢 Synced"); return; }
   try{
@@ -401,29 +430,17 @@ async function pollCloud(){
   }catch(e){ setSyncUI("error","🔴 Sync error"); console.error(e); }
 }
 
-// ── File Upload ───────────────────────────────────────────────
 function handleFileUpload(evt){
   const file=evt.target.files[0]; if(!file) return;
   pendingFileName=file.name;
-
-  // 尝试从文件名读取日期
   const nm=file.name.match(/(\d{4})(\d{2})(\d{2})/);
   const guessDate=nm?`${nm[1]}-${nm[2]}-${nm[3]}`:new Date().toISOString().slice(0,10);
-
-  // 显示日期确认弹窗
   document.getElementById("dateInput").value=guessDate;
   document.getElementById("dateModal").classList.add("open");
-
-  // 存储文件数据待确认后处理
   const ext=file.name.split(".").pop().toLowerCase();
   const reader=new FileReader();
-  if(ext==="csv"){
-    reader.onload=e=>{ pendingFileData={type:"csv",data:e.target.result}; };
-    reader.readAsText(file,"UTF-8");
-  } else {
-    reader.onload=e=>{ pendingFileData={type:"xlsx",data:e.target.result}; };
-    reader.readAsArrayBuffer(file);
-  }
+  if(ext==="csv"){ reader.onload=e=>{ pendingFileData={type:"csv",data:e.target.result}; }; reader.readAsText(file,"UTF-8"); }
+  else           { reader.onload=e=>{ pendingFileData={type:"xlsx",data:e.target.result}; }; reader.readAsArrayBuffer(file); }
   evt.target.value="";
 }
 
@@ -439,8 +456,7 @@ function confirmDate(){
   document.getElementById("dateModal").classList.remove("open");
   document.getElementById("headerDate").textContent=REPORT_DATE;
   document.getElementById("uploadStatus").textContent=`📄 ${pendingFileName}`;
-
-  if(!pendingFileData){ showToast("⚠️ File not ready, please try again"); return; }
+  if(!pendingFileData){ showToast("⚠️ File not ready"); return; }
   if(pendingFileData.type==="csv") parseCSV(pendingFileData.data);
   else parseXLSX(pendingFileData.data);
   pendingFileData=null; pendingFileName="";
@@ -474,17 +490,20 @@ function findCol(row,cands){
   for(const c of cands){ const f=keys.find(k=>k.toLowerCase().trim()===c.toLowerCase().trim()); if(f!==undefined) return row[f]??""; }
   return "";
 }
+
 function buildOrders(rows){
   const data=rows.filter(r=>String(findCol(r,["QIMA Ref.","QIMA Ref"])).trim().startsWith("Q"));
   if(!data.length){ showToast("✗ No valid rows found"); return; }
   ORDERS=data.map(r=>({
-    ref:        String(findCol(r,["QIMA Ref.","QIMA Ref"])).trim(),
-    client:     String(findCol(r,["Client name","Client Name"])).trim(),
-    lastDay:    fmtDate(findCol(r,["Last Day Of Inspection","Last Day"])),
-    days:       parseInt(findCol(r,["Days","days"]),10)||0,
-    inspectors: String(findCol(r,["Responsible name","Responsible Name","Inspector","Inspectors"])).trim(),
-    office:     String(findCol(r,["Leader","leader","Office","office"])).trim(),
-    reason:"",comment:"",responsible:"",itlpm:""
+    inspectionDate: String(findCol(r,["Inspection date","Inspection Date"])).trim(),
+    ref:            String(findCol(r,["QIMA Ref.","QIMA Ref"])).trim(),
+    client:         String(findCol(r,["Client name","Client Name"])).trim(),
+    reports:        String(findCol(r,["Reports","reports"])).trim(),
+    lastDay:        fmtDate(findCol(r,["Last Day Of Inspection","Last Day"])),
+    days:           parseInt(findCol(r,["Days","days"]),10)||0,
+    inspectors:     String(findCol(r,["Responsible name","Responsible Name","Inspector","Inspectors"])).trim(),
+    office:         String(findCol(r,["Leader","leader","Office","office"])).trim(),
+    reason:"", comment:"", responsible:"", itlpm:""
   }));
   filtered=[...ORDERS];
   renderOfficeOptions();
@@ -493,6 +512,7 @@ function buildOrders(rows){
   document.getElementById("exportBtn").disabled=false;
   showToast(`✅ Loaded ${ORDERS.length} orders — syncing...`);
 }
+
 function fmtDate(val){
   if(!val) return "";
   if(val instanceof Date){ return `${String(val.getDate()).padStart(2,"0")}-${val.toLocaleString("en-US",{month:"short"})}-${String(val.getFullYear()).slice(-2)}`; }
@@ -505,49 +525,33 @@ function fmtDate(val){
 // ── Export to Excel ───────────────────────────────────────────
 function exportToExcel(){
   if(!ORDERS.length){ showToast("⚠️ No data to export"); return; }
-
-  // 准备Excel数据
   const headers = [
-    "Report Date","QIMA Ref.","Client","Last Day","Days Overdue",
-    "Inspector(s)","Office","ITL/PM","Reason","Comment","Responsible","Status"
+    "Inspection date","QIMA Ref.","Client name","Reports",
+    "Last Day Of Inspection","Days","Report status actions detailed",
+    "Responsible","Responsible name","Leader","Due date"
   ];
-
-  const rows = ORDERS.map(o => {
-    const effResp = IS_OTHER(o.reason)?(o.responsible||""):autoResp(o.reason);
-    const itl = itlpmInfo(o.office, effResp);
-    const itlpmVal = itl.mode==="manual"?(o.itlpm||""):(itl.val||"");
-    return [
-      REPORT_DATE,
-      o.ref,
-      o.client,
-      o.lastDay,
-      o.days,
-      o.inspectors,
-      o.office,
-      itlpmVal,
-      o.reason,
-      o.comment,
-      effResp,
-      isFilled(o)?"Filled":"Pending"
-    ];
-  });
-
-  // 创建工作表
-  const wsData = [headers, ...rows];
+  const rows = ORDERS.map(o => [
+    o.inspectionDate||"",
+    o.ref,
+    o.client,
+    o.reports||"",
+    o.lastDay,
+    o.days,
+    getExportStatusDetail(o),
+    getEffectiveResponsible(o),
+    getExportResponsibleName(o),
+    getExportLeader(o),
+    REPORT_DATE
+  ]);
   const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.aoa_to_sheet(wsData);
-
-  // 设置列宽
-  ws['!cols'] = [
-    {wch:12},{wch:18},{wch:35},{wch:12},{wch:6},
-    {wch:30},{wch:16},{wch:20},{wch:60},{wch:30},{wch:14},{wch:8}
+  const ws = XLSX.utils.aoa_to_sheet([headers,...rows]);
+  ws['!cols']=[
+    {wch:14},{wch:18},{wch:40},{wch:8},
+    {wch:14},{wch:6},{wch:55},{wch:16},
+    {wch:35},{wch:22},{wch:12}
   ];
-
-  // 添加到workbook
-  XLSX.utils.book_append_sheet(wb, ws, REPORT_DATE||"Late Report");
-
-  // 下载文件
-  const fileName = `Late_Report_Filled_${(REPORT_DATE||"unknown").replace(/-/g,"")}.xlsx`;
+  XLSX.utils.book_append_sheet(wb, ws, "Late Report");
+  const fileName=`Late_Report_Filled_${(REPORT_DATE||"unknown").replace(/-/g,"")}.xlsx`;
   XLSX.writeFile(wb, fileName);
   showToast(`✅ Exported: ${fileName}`);
 }
@@ -626,11 +630,9 @@ function updResp(ref,val){
 }
 function updF(ref,field,val){
   const o=ORDERS.find(x=>x.ref===ref); if(!o) return;
-  o[field]=val;
-  isTyping=true;
+  o[field]=val; isTyping=true;
   const tr=document.querySelector(`tr[data-ref="${CSS.escape(ref)}"]`); if(!tr) return;
-  const fill=isFilled(o);
-  const isOth=IS_OTHER(o.reason);
+  const fill=isFilled(o); const isOth=IS_OTHER(o.reason);
   fill ? tr.classList.add("filled") : tr.classList.remove("filled");
   if(field==="comment"){
     const inp=tr.querySelector(".comment-inp");
@@ -648,16 +650,18 @@ function updF(ref,field,val){
 }
 
 function applyFilters(){
-  const of=document.getElementById("filterOffice").value.trim().toLowerCase();
-  const st=document.getElementById("filterStatus").value.trim().toLowerCase();
-  const df=document.getElementById("filterDays").value.trim().toLowerCase();
-  const kw=document.getElementById("searchBox").value.trim().toLowerCase();
+  const of  = document.getElementById("filterOffice").value.trim().toLowerCase();
+  const res = document.getElementById("filterResponsible").value.trim();
+  const st  = document.getElementById("filterStatus").value.trim().toLowerCase();
+  const df  = document.getElementById("filterDays").value.trim().toLowerCase();
+  const kw  = document.getElementById("searchBox").value.trim().toLowerCase();
   filtered=ORDERS.filter(o=>{
-    const om=!of||(o.office||"").toLowerCase()===of;
-    const sm=!st||(st==="filled"?isFilled(o):!isFilled(o));
-    const dm=!df||dayClass(o.days)===df;
-    const km=!kw||`${o.ref} ${o.client} ${o.inspectors} ${o.office}`.toLowerCase().includes(kw);
-    return om&&sm&&dm&&km;
+    const om = !of  || (o.office||"").toLowerCase()===of;
+    const rm = !res || getEffectiveResponsible(o)===res;
+    const sm = !st  || (st==="filled"?isFilled(o):!isFilled(o));
+    const dm = !df  || dayClass(o.days)===df;
+    const km = !kw  || `${o.ref} ${o.client} ${o.inspectors} ${o.office}`.toLowerCase().includes(kw);
+    return om&&rm&&sm&&dm&&km;
   });
   renderTable(filtered);
 }
@@ -683,6 +687,7 @@ function generateEmail(){
   });
   return t+"Best regards,\nITL";
 }
+
 function openSubmitModal(){ if(!ORDERS.length){showToast("⚠️ Upload a file first");return;} document.getElementById("emailPreview").textContent=generateEmail(); document.getElementById("submitModal").classList.add("open"); }
 function closeModal(){ document.getElementById("submitModal").classList.remove("open"); }
 function copyEmail(){ navigator.clipboard.writeText(document.getElementById("emailPreview").textContent).then(()=>showToast("✓ Copied!")).catch(()=>showToast("✗ Failed")); }
