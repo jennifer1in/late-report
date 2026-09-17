@@ -127,7 +127,7 @@
     </button>
   </div>
   <span class="upload-status" id="uploadStatus"></span>
-  <button class="export-btn" id="exportBtn" onclick="expX()" disabled>
+  <button class="export-btn" id="exportBtn" onclick="exportToExcel()" disabled>
     ⬇️ Export Today's Data
   </button>
   <div class="sync-badge">
@@ -140,7 +140,7 @@
   <div class="instructions">
     <b>使用方法：</b>上传文件后自动同步。选 <b>Other</b> 时 Comment + Responsible 必填。PM/AM 时 ITL/PM 需手动填写。填写完成后点击 <b>⬇️ Export Today's Data</b> 导出。
     <br>
-    <b>Instructions:</b> Upload file → Fill in → Click <b>⬇️ Export Today's Data</b> to download formatted Excel.
+    <b>Instructions:</b> Upload file → Fill in → Click <b>⬇️ Export Today's Data</b>.
   </div>
   <div class="filter-bar">
     <label>筛选:</label>
@@ -391,6 +391,7 @@ function fmtMMDDYY(d){
     const mo=MS[m[2]]||"01";
     return `${mo[0]==='0'?mo:mo.padStart(2,'0')}-${m[1]}-${m[3]}`;
   }
+  // yyyy-mm-dd -> mm-dd-yy
   const y=s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if(y) return `${y[2]}-${y[3]}-${y[1].slice(-2)}`;
   return s;
@@ -401,6 +402,7 @@ function expX(){
   if(!ORD.length){ showT("⚠️ No data"); return; }
 
   const hd = ["Inspection date","QIMA Ref.","Client name","Reports","Last Day Of Inspection","Days","Report status actions detailed","Responsible","Responsible name","Leader","Due date"];
+  // 对齐配置：A居中 B居中 C左对齐 D居中 E居中 F居中 G左对齐 H居中 I居中 J居中 K居中
   const aligns = ["center","center","left","center","center","center","left","center","center","center","center"];
 
   const rows = ORD.map(o => [
@@ -420,12 +422,14 @@ function expX(){
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.aoa_to_sheet([hd, ...rows]);
 
+  // 设置列宽
   ws['!cols'] = [
     {wch:12},{wch:20},{wch:50},{wch:8},
     {wch:14},{wch:7},{wch:55},{wch:16},
     {wch:40},{wch:24},{wch:12}
   ];
 
+  // 设置字体、对齐、边框
   const ref = XLSX.utils.decode_range(ws['!ref']);
   for(let R=ref.s.r; R<=ref.e.r; R++){
     for(let C=ref.s.c; C<=ref.e.c; C++){
@@ -441,6 +445,7 @@ function expX(){
           right: {style:'thin', color:{auto:1}}
         }
       };
+      // 表头行蓝色背景 + 白色字
       if(R === 0){
         cell.s.fill = { fgColor: { rgb: "B4C6E7" } };
         cell.s.font = { name: 'Arial', sz: 10, bold: true };
@@ -448,6 +453,9 @@ function expX(){
       }
     }
   }
+
+  // 数字格式：日期列 A=0, E=4, K=10 设置为 MM-DD-YY
+  // 但实际上我们已经把日期格式化为文本了，所以不需要特殊数字格式
 
   XLSX.utils.book_append_sheet(wb, ws, "Late Report");
   const fn = `Late_Report_Filled_${(RD||"unknown").replace(/-/g,"")}.xlsx`;
