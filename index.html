@@ -147,6 +147,30 @@ function sDetail(o){return ISOTH(o.reason)?(o.comment||""):(o.reason||"")}
 function rName(o){const r=effResp(o);if(RAITL.includes(r))return o.inspectors||"";if(RMITL.includes(r))return o.itlpm||"";return""}
 function ldr(o){const r=effResp(o);if(r==="PM")return"Vicky/Emily";if(r==="AM")return"Thalia/Emilio/Diana";if(RAITL.includes(r)){const it=itlpmInfo(o.office,r);return it.m==="aut"?(it.v||""):(o.itlpm||"")}return""}
 
+// 日期格式化函数
+function formatDateForDisplay(date){
+  if(!date)return"";
+  if(date instanceof Date){
+    const y=date.getFullYear();
+    const m=String(date.getMonth()+1).padStart(2,"0");
+    const d=String(date.getDate()).padStart(2,"0");
+    return `${y}-${m}-${d}`;
+  }
+  return String(date);
+}
+
+function parseExcelDate(val){
+  if(!val)return null;
+  if(val instanceof Date)return val;
+  if(typeof val==="number"){
+    // Excel序列日期转换
+    const d=new Date(Date.UTC(1900,0,val-1));
+    return new Date(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate());
+  }
+  const parsed=new Date(val);
+  return isNaN(parsed.getTime())?null:parsed;
+}
+
 let ORD=[],flt=[],RD="",pt=null,sv=false,lh="",dt=null,it=false,pfd=null,pfn="";
 function sUI(s,l){document.getElementById("syncDot").className="sync-dot"+(s==="s"?" syncing":s==="e"?" error":"");document.getElementById("syncLabel").textContent=l}
 function hsh(o){return JSON.stringify(o.map(x=>x.ref+x.reason+x.comment+x.responsible+x.itlpm))}
@@ -159,27 +183,86 @@ function pXLSX(b){try{const wb=XLSX.read(b,{type:"array",cellDates:true});bO(XLS
 function pCSV(t){try{const ls=t.trim().split("\n");let hi=0;for(let i=0;i<ls.length;i++){if(ls[i].toLowerCase().includes("qima ref")){hi=i;break}}const hd=cL(ls[hi]).map(h=>h.trim()),rows=[];for(let i=hi+1;i<ls.length;i++){if(!ls[i].trim())continue;const v=cL(ls[i]),o={};hd.forEach((h,idx)=>{o[h]=(v[idx]||"").trim()});rows.push(o)}bO(rows)}catch(e){showT("Failed")}}
 function cL(l){const r=[];let c="",q=false;for(const ch of l){if(ch==='"'){q=!q}else if(ch===","&&!q){r.push(c);c=""}else{c+=ch}}r.push(c);return r}
 function fC(r,cd){const ks=Object.keys(r);for(const c of cd){const f=ks.find(k=>k.toLowerCase().trim()===c.toLowerCase().trim());if(f!==undefined)return r[f]??""}return""}
-function bO(rs){const d=rs.filter(r=>String(fC(r,["QIMA Ref.","QIMA Ref"])).trim().startsWith("Q"));if(!d.length){showT("No valid rows");return}ORD=d.map(r=>({insDate:String(fC(r,["Inspection date","Inspection Date"])).trim(),ref:String(fC(r,["QIMA Ref.","QIMA Ref"])).trim(),client:String(fC(r,["Client name","Client Name"])).trim(),reports:String(fC(r,["Reports","reports"])).trim(),lastDay:String(fC(r,["Last Day Of Inspection","Last Day"])).trim(),days:parseInt(fC(r,["Days","days"]),10)||0,insp:String(fC(r,["Responsible name","Responsible Name","Inspector","Inspectors"])).trim(),office:String(fC(r,["Leader","leader","Office","office"])).trim(),reason:"",comment:"",responsible:"",itlpm:""}));flt=[...ORD];rOff();applyF();saveC();document.getElementById("exportBtn").disabled=false;showT(`Loaded ${ORD.length} orders`)}
+function bO(rs){const d=rs.filter(r=>String(fC(r,["QIMA Ref.","QIMA Ref"])).trim().startsWith("Q"));if(!d.length){showT("No valid rows");return}ORD=d.map(r=>{const inspDateVal=fC(r,["Inspection date","Inspection Date"]),lastDayVal=fC(r,["Last Day Of Inspection","Last Day"]);return{insDate:parseExcelDate(inspDateVal),ref:String(fC(r,["QIMA Ref.","QIMA Ref"])).trim(),client:String(fC(r,["Client name","Client Name"])).trim(),reports:String(fC(r,["Reports","reports"])).trim(),lastDay:parseExcelDate(lastDayVal),days:parseInt(fC(r,["Days","days"]),10)||0,insp:String(fC(r,["Responsible name","Responsible Name","Inspector","Inspectors"])).trim(),office:String(fC(r,["Leader","leader","Office","office"])).trim(),reason:"",comment:"",responsible:"",itlpm:""}});flt=[...ORD];rOff();applyF();saveC();document.getElementById("exportBtn").disabled=false;showT(`Loaded ${ORD.length} orders`)}
 
-// 导出Excel函数 - 完全匹配原始文件格式
+// 修复的导出函数 - 完全匹配原始文件格式
 function exportToExcel(){
   if(!ORD.length){showT("No data");return}
   const hd=["Inspection date","QIMA Ref.","Client name","Reports","Last Day Of Inspection","Days","Report status actions detailed","Responsible","Responsible name","Leader","Due date"];
-  const rows=ORD.map(o=>[
-    o.insDate,o.ref,o.client,o.reports||"",o.lastDay,o.days,
-    sDetail(o),effResp(o),rName(o),ldr(o),RD
-  ]);
-  const wb=XLSX.utils.book_new(),ws=XLSX.utils.aoa_to_sheet([hd,...rows]);
-  ws['!cols']=[{wch:14},{wch:20},{wch:50},{wch:8},{wch:16},{wch:7},{wch:55},{wch:16},{wch:40},{wch:24},{wch:12}];
+  
+  // 构建数据行，日期对象保持为日期而不转换为字符串
+  const rows=ORD.map(o=>{
+    const dueDate=RD?new Date(RD):null;
+    return[
+      o.insDate||"",  // 保持Date对象
+      o.ref,
+      o.client,
+      o.reports||"",
+      o.lastDay||"",  // 保持Date对象
+      o.days,
+      sDetail(o),
+      effResp(o),
+      rName(o),
+      ldr(o),
+      dueDate||""  // 保持Date对象
+    ];
+  });
+  
+  const wb=XLSX.utils.book_new();
+  // 使用aoa_to_sheet而不是json，这样可以正确处理日期对象
+  const ws=XLSX.utils.aoa_to_sheet([hd,...rows]);
+  
+  // 设置列宽
+  ws['!cols']=[
+    {wch:14},  // Inspection date
+    {wch:20},  // QIMA Ref.
+    {wch:50},  // Client name
+    {wch:8},   // Reports
+    {wch:16},  // Last Day Of Inspection
+    {wch:7},   // Days
+    {wch:55},  // Report status actions detailed
+    {wch:16},  // Responsible
+    {wch:40},  // Responsible name
+    {wch:24},  // Leader
+    {wch:12}   // Due date
+  ];
+  
+  // 格式化所有单元格
   const ref=XLSX.utils.decode_range(ws['!ref']);
   for(let R=ref.s.r;R<=ref.e.r;R++){
     for(let C=ref.s.c;C<=ref.e.c;C++){
-      const cell=ws[XLSX.utils.encode_cell({r:R,c:C})];
+      const cellRef=XLSX.utils.encode_cell({r:R,c:C});
+      const cell=ws[cellRef];
       if(!cell)continue;
-      cell.s={font:{name:'Arial',sz:10},alignment:{vertical:'center',wrapText:true},border:{top:{style:'thin',color:{auto:1}},bottom:{style:'thin',color:{auto:1}},left:{style:'thin',color:{auto:1}},right:{style:'thin',color:{auto:1}}}};
-      if(R===0){cell.s.fill={fgColor:{rgb:"B4C6E7"}};cell.s.font={name:'Arial',sz:10,bold:true};cell.s.alignment={horizontal:'center',vertical:'center',wrapText:true}}else{cell.s.alignment.horizontal=[0,1,3,4,5,7,8,9,10].includes(C)?'center':'left'}
+      
+      // 创建样式对象
+      cell.s={
+        font:{name:'Arial',sz:10},
+        alignment:{vertical:'center',wrapText:true},
+        border:{
+          top:{style:'thin',color:{auto:1}},
+          bottom:{style:'thin',color:{auto:1}},
+          left:{style:'thin',color:{auto:1}},
+          right:{style:'thin',color:{auto:1}}
+        }
+      };
+      
+      // 表头行样式
+      if(R===0){
+        cell.s.fill={fgColor:{rgb:"B4C6E7"}};
+        cell.s.font={name:'Arial',sz:10,bold:true};
+        cell.s.alignment={horizontal:'center',vertical:'center',wrapText:true};
+      }else{
+        cell.s.alignment.horizontal=[0,1,3,4,5,7,8,9,10].includes(C)?'center':'left';
+      }
+      
+      // 为日期列设置日期格式
+      if([0,4,10].includes(C)){  // Inspection date, Last Day Of Inspection, Due date
+        cell.z='mm-dd-yy';  // 与原始文件相同的日期格式
+      }
     }
   }
+  
   XLSX.utils.book_append_sheet(wb,ws,"Late Report");
   XLSX.writeFile(wb,`Late_Report_Filled_${(RD||"unknown").replace(/-/g,"")}.xlsx`);
   showT("Exported!");
@@ -188,20 +271,23 @@ function exportToExcel(){
 const esc=s=>String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 const escJ=s=>String(s??"").replace(/\\/g,"\\\\").replace(/'/g,"\\'");
 function rOff(){const s=document.getElementById("filterOffice"),os=[...new Set(ORD.map(o=>(o.office||"").trim()).filter(Boolean))].sort();s.innerHTML=`<option value="">All Offices</option>`+os.map(o=>`<option value="${esc(o)}">${esc(o)}</option>`).join("")}
-function rT(data){const tb=document.getElementById("tableBody");if(!ORD.length){tb.innerHTML=`<tr><td colspan="12"><div class="empty-state"><div class="icon">📂</div><p>No data loaded yet.<br>Click <b>📂 Upload Late Report</b> to upload your file.</p></div></td></tr>`;uS();return}if(!data.length){tb.innerHTML=`<tr><td colspan="12" style="text-align:center;padding:40px;color:#888;">No matches.</td></tr>`;uS();return}tb.innerHTML=data.map((o,i)=>{const io=ISOTH(o.reason),ce=io&&!(o.comment||"").trim(),fl=isFilled(o),r=effResp(o),itl=itlpmInfo(o.office,r);let ih;if(!r)ih='<span class="cell-dash">—</span>';else if(itl.m==="man"){const ie=!(o.itlpm||"").trim();ih=`<input class="itlpm-inp ${ie?"error":""}" type="text" value="${esc(o.itlpm||"")}" placeholder="Enter name..." oninput="uF('${escJ(o.ref)}','itlpm',this.value)"><div class="field-warning ${ie?"show":""}">Required</div>`}else if(itl.m==="na")ih='<span class="cell-na">N/A</span>';else if(itl.m==="aut")ih=`<span class="cell-readonly">${esc(itl.v||"—")}</span>`;else ih='<span class="cell-dash">—</span>';let rh;if(io){const re=io&&!(o.responsible||"").trim();rh=`<select class="responsible-sel ${re?"error":""}" onchange="uResp('${escJ(o.ref)}',this.value)">${ROPTS.map(op=>`<option value="${esc(op)}" ${o.responsible===op?"selected":""}>${esc(op||"— Select —")}</option>`).join("")}</select><div class="field-warning ${re?"show":""}">Required</div>`}else rh=`<span class="cell-readonly">${esc(autoResp(o.reason)||"—")}</span>`;return`<tr class="${fl?"filled":""}" data-ref="${esc(o.ref)}"><td>${i+1}</td><td style="font-family:monospace;font-size:11.5px">${esc(o.ref)}</td><td style="max-width:190px;font-size:12px" title="${esc(o.client)}">${esc(o.client)}</td><td style="font-size:12px">${esc(o.lastDay)}</td><td>${o.days}</td><td style="max-width:160px;font-size:11px;color:#555" title="${esc(o.insp)}">${esc(o.insp)||"-"}</td><td style="font-size:11.5px">${esc(o.office)}</td><td class="td-itlpm">${ih}</td><td><select class="reason-sel" onchange="uReason('${escJ(o.ref)}',this.value)">${ROPT.map(r=>`<option value="${esc(r)}" ${o.reason===r?"selected":""}>${esc(r||"— Select —")}</option>`).join("")}</select></td><td><input class="comment-inp ${ce?"error":""}" type="text" value="${esc(o.comment)}" placeholder="${io?"Required":"Optional"}" oninput="uF('${escJ(o.ref)}','comment',this.value)"><div class="field-warning ${ce?"show":""}">Required</div></td><td class="td-resp">${rh}</td><td style="text-align:center"><span class="status-dot ${fl?"dot-filled":"dot-pending"}"></span><span style="font-size:11px">${fl?"Filled":"Pending"}</span></td></tr>`}).join("");uS()}
+function rT(data){const tb=document.getElementById("tableBody");if(!ORD.length){tb.innerHTML=`<tr><td colspan="12"><div class="empty-state"><div class="icon">📂</div><p>No data loaded yet.<br>Click <b>📂 Upload Late Report</b> to upload your file.</p></div></td></tr>`;uS();return}if(!data.length){tb.innerHTML=`<tr><td colspan="12" style="text-align:center;padding:40px;color:#888;">No matches.</td></tr>`;uS();return}tb.innerHTML=data.map((o,i)=>{const io=ISOTH(o.reason),ce=io&&!(o.comment||"").trim(),fl=isFilled(o),r=effResp(o),itl=itlpmInfo(o.office,r);let ih;if(!r)ih='<span class="cell-dash">—</span>';else if(itl.m==="man"){const ie=!(o.itlpm||"").trim();ih=`<input class="itlpm-inp ${ie?"error":""}" type="text" value="${esc(o.itlpm||"")}" placeholder="Enter name..." oninput="uF('${escJ(o.ref)}','itlpm',this.value)"><div class="field-warning ${ie?"show":""}">Required</div>`}else if(itl.m==="na")ih='<span class="cell-na">N/A</span>';else if(itl.m==="aut")ih=`<span class="cell-readonly">${esc(itl.v||"—")}</span>`;else ih='<span class="cell-dash">—</span>';let rh;if(io){const re=io&&!(o.responsible||"").trim();rh=`<select class="responsible-sel ${re?"error":""}" onchange="uResp('${escJ(o.ref)}',this.value)">${ROPTS.map(op=>`<option value="${esc(op)}" ${o.responsible===op?"selected":""}>${esc(op||"— Select —")}</option>`).join("")}</select><div class="field-warning ${re?"show":""}">Required</div>`}else rh=`<span class="cell-readonly">${esc(autoResp(o.reason)||"—")}</span>`;return`<tr class="${fl?"filled":""}" data-ref="${esc(o.ref)}"><td>${i+1}</td><td style="font-family:monospace;font-size:11.5px">${esc(o.ref)}</td><td style="max-width:190px;font-size:12px" title="${esc(o.client)}">${esc(o.client)}</td><td style="font-size:12px">${formatDateForDisplay(o.lastDay)}</td><td>${o.days}</td><td style="max-width:160px;font-size:11px;color:#555" title="${esc(o.insp)}">${esc(o.insp)||"-"}</td><td style="font-size:11.5px">${esc(o.office)}</td><td class="td-itlpm">${ih}</td><td><select class="reason-sel" onchange="uReason('${escJ(o.ref)}',this.value)">${ROPT.map(r=>`<option value="${esc(r)}" ${o.reason===r?"selected":""}>${esc(r||"— Select —")}</option>`).join("")}</select></td><td><input class="comment-inp ${ce?"error":""}" type="text" value="${esc(o.comment)}" placeholder="${io?"Required":"Optional"}" oninput="uF('${escJ(o.ref)}','comment',this.value)"><div class="field-warning ${ce?"show":""}">Required</div></td><td class="td-resp">${rh}</td><td style="text-align:center"><span class="status-dot ${fl?"dot-filled":"dot-pending"}"></span><span style="font-size:11px">${fl?"Filled":"Pending"}</span></td></tr>`}).join("");uS()}
 function rR(rf){const o=ORD.find(x=>x.ref===rf);if(!o)return;const tr=document.querySelector(`tr[data-ref="${CSS.escape(rf)}"]`);if(!tr)return;const fl=isFilled(o),io=ISOTH(o.reason);fl?tr.classList.add("filled"):tr.classList.remove("filled");const r=effResp(o),itl=itlpmInfo(o.office,r);let ih;if(!r)ih='<span class="cell-dash">—</span>';else if(itl.m==="man"){const ie=!(o.itlpm||"").trim();ih=`<input class="itlpm-inp ${ie?"error":""}" type="text" value="${esc(o.itlpm||"")}" placeholder="Enter name..." oninput="uF('${escJ(o.ref)}','itlpm',this.value)"><div class="field-warning ${ie?"show":""}">Required</div>`}else if(itl.m==="na")ih='<span class="cell-na">N/A</span>';else if(itl.m==="aut")ih=`<span class="cell-readonly">${esc(itl.v||"—")}</span>`;else ih='<span class="cell-dash">—</span>';tr.querySelector(".td-itlpm").innerHTML=ih;let rh;if(io){const re=io&&!(o.responsible||"").trim();rh=`<select class="responsible-sel ${re?"error":""}" onchange="uResp('${escJ(o.ref)}',this.value)">${ROPTS.map(op=>`<option value="${esc(op)}" ${o.responsible===op?"selected":""}>${esc(op||"— Select —")}</option>`).join("")}</select><div class="field-warning ${re?"show":""}">Required</div>`}else rh=`<span class="cell-readonly">${esc(autoResp(o.reason)||"—")}</span>`;tr.querySelector(".td-resp").innerHTML=rh;const ci=tr.querySelector(".comment-inp");if(ci){const ce=io&&!(o.comment||"").trim();ci.classList.toggle("error",ce);ci.placeholder=io?"Required":"Optional";const cw=ci.nextElementSibling;if(cw)cw.classList.toggle("show",ce)}const st=tr.querySelector(".status-dot+span");if(st)st.textContent=fl?"Filled":"Pending";uS()}
 function uReason(rf,v){const o=ORD.find(x=>x.ref===rf);if(!o)return;o.reason=v;o.responsible=ISOTH(v)?"":autoResp(v);o.itlpm="";rR(rf);saveC()}
 function uResp(rf,v){const o=ORD.find(x=>x.ref===rf);if(!o)return;o.responsible=v;o.itlpm="";rR(rf);saveC()}
 function uF(rf,f,v){const o=ORD.find(x=>x.ref===rf);if(!o)return;o[f]=v;it=true;const tr=document.querySelector(`tr[data-ref="${CSS.escape(rf)}"]`);if(!tr)return;const fl=isFilled(o),io=ISOTH(o.reason);fl?tr.classList.add("filled"):tr.classList.remove("filled");if(f==="comment"){const inp=tr.querySelector(".comment-inp");if(inp&&io){const ce=!(o.comment||"").trim();inp.classList.toggle("error",ce);const w=inp.nextElementSibling;if(w)w.classList.toggle("show",ce)}}if(f==="itlpm"){const inp=tr.querySelector(".itlpm-inp");if(inp){const ie=!(o.itlpm||"").trim();inp.classList.toggle("error",ie);const w=inp.nextElementSibling;if(w)w.classList.toggle("show",ie)}}const st=tr.querySelector(".status-dot+span");if(st)st.textContent=fl?"Filled":"Pending";uS();clearTimeout(dt);dt=setTimeout(()=>{it=false;saveC()},2000)}
-function applyF(){const of=document.getElementById("filterOffice").value.trim().toLowerCase(),rs=document.getElementById("filterResponsible").value.trim(),st=document.getElementById("filterStatus").value.trim().toLowerCase(),df=document.getElementById("filterDays").value.trim().toLowerCase(),kw=document.getElementById("searchBox").value.trim().toLowerCase();flt=ORD.filter(o=>{const om=!of||(o.office||"").toLowerCase()===of,rm=!rs||effResp(o)===rs,sm=!st||(st==="filled"?isFilled(o):!isFilled(o)),dm=!df||(df==="orange"?o.days>=7:df==="yellow"?o.days>=3&&o.days<=6:o.days<=2),km=!kw||`${o.ref} ${o.client} ${o.insp} ${o.office}`.toLowerCase().includes(kw);return om&&rm&&sm&&dm&&km});rT(flt)}
+function applyFilters(){const of=document.getElementById("filterOffice").value.trim().toLowerCase(),rs=document.getElementById("filterResponsible").value.trim(),st=document.getElementById("filterStatus").value.trim().toLowerCase(),df=document.getElementById("filterDays").value.trim().toLowerCase(),kw=document.getElementById("searchBox").value.trim().toLowerCase();flt=ORD.filter(o=>{const om=!of||(o.office||"").toLowerCase()===of,rm=!rs||effResp(o)===rs,sm=!st||(st==="filled"?isFilled(o):!isFilled(o)),dm=!df||(df==="orange"?o.days>=7:df==="yellow"?o.days>=3&&o.days<=6:o.days<=2),km=!kw||`${o.ref} ${o.client} ${o.insp} ${o.office}`.toLowerCase().includes(kw);return om&&rm&&sm&&dm&&km});rT(flt)}
+function applyF(){applyFilters()}
 function uS(){const t=ORD.length,f=ORD.filter(isFilled).length;document.getElementById("statTotal").textContent=t;document.getElementById("statFilled").textContent=f;document.getElementById("statPending").textContent=t-f;document.getElementById("statOrange").textContent=ORD.filter(o=>o.days>=7).length;document.getElementById("progressLabel").textContent=`${f}/${t} filled`;document.getElementById("progressFill").style.width=t?`${f/t*100}%`:"0%"}
-function genE(){const r=ORD.filter(isFilled);if(!r.length)return"No filled orders yet.";let t=`Subject: Late Report Update - ${RD}\n\nDear Team,\n\n`;r.forEach((o,i)=>{const er=ISOTH(o.reason)?o.responsible:autoResp(o.reason),it=itlpmInfo(o.office,er),pm=it.m==="man"?(o.itlpm||"-"):(it.v||"-");t+=`${i+1}. ${o.ref}\n   Client: ${o.client}\n   Last Day: ${o.lastDay}\n   Days: ${o.days}\n   Insp: ${o.insp||"-"}\n   Office: ${o.office||"-"}\n   ITL/PM: ${pm}\n   Reason: ${o.reason||"-"}\n   Comment: ${o.comment||"-"}\n   Responsible: ${er||"-"}\n\n`});return t+"Best regards,\nITL"}
-function oSM(){if(!ORD.length){showT("Upload first");return}document.getElementById("emailPreview").textContent=genE();document.getElementById("submitModal").classList.add("open")}
-function cM(){document.getElementById("submitModal").classList.remove("open")}
-function cpy(){navigator.clipboard.writeText(document.getElementById("emailPreview").textContent).then(()=>showT("Copied!")).catch(()=>showT("Failed"))}
+function genE(){const r=ORD.filter(isFilled);if(!r.length)return"No filled orders yet.";let t=`Subject: Late Report Update - ${RD}\n\nDear Team,\n\n`;r.forEach((o,i)=>{const er=ISOTH(o.reason)?o.responsible:autoResp(o.reason),it=itlpmInfo(o.office,er),pm=it.m==="man"?(o.itlpm||"-"):(it.v||"-");t+=`${i+1}. ${o.ref}\n   Client: ${o.client}\n   Last Day: ${formatDateForDisplay(o.lastDay)}\n   Days: ${o.days}\n   Insp: ${o.insp||"-"}\n   Office: ${o.office||"-"}\n   ITL/PM: ${pm}\n   Reason: ${o.reason||"-"}\n   Comment: ${o.comment||"-"}\n   Responsible: ${er||"-"}\n\n`});return t+"Best regards,\nITL"}
+function openSubmitModal(){if(!ORD.length){showT("Upload first");return}document.getElementById("emailPreview").textContent=genE();document.getElementById("submitModal").classList.add("open")}
+function closeModal(){document.getElementById("submitModal").classList.remove("open")}
+function copyEmail(){navigator.clipboard.writeText(document.getElementById("emailPreview").textContent).then(()=>showT("Copied!")).catch(()=>showT("Failed"))}
 function showT(m){const t=document.getElementById("copiedToast");t.textContent=m;t.style.display="block";setTimeout(()=>t.style.display="none",2500)}
-window.onclick=e=>{if(e.target===document.getElementById("submitModal"))cM();if(e.target===document.getElementById("dateModal"))canU()};
+window.onclick=e=>{if(e.target===document.getElementById("submitModal"))closeModal();if(e.target===document.getElementById("dateModal"))canU()};
 sUI("s","Connecting...");pollC();pt=setInterval(pollC,POLL_MS);
+// 修复函数别名
+const handleFileUpload=hFU,confirmDate=confD,cancelUpload=canU,openSubmitModal_=openSubmitModal,closeModal_=closeModal,copyEmail_=copyEmail;
 </script>
 </body>
 </html>
