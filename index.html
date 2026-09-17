@@ -135,6 +135,7 @@ const POLL_MS=5000;
 const ROPT=["","waiting for IP update to re-submit the report / 等待IP 更新后重新提交报告","waiting for final PL / 等待最终装箱单","Waiting for final PL and booking update / 等待最终装箱单和 booking更新","Waiting for booking update / 等待 booking更新","Waiting for seal picture, need support from PM / 等待封条照片，需要 PM 协助","The container still not loding yet, pls change the last day of inspection / 集装箱还未开始装货，请更改最终验货日期","The order will be cancelled, pls change the status / 订单将被取消，请更改状态","Waiting for AM to update booking / 等待 AM更新 booking 信息","Waiting for AM to confirm how to submit the report / 等待AM确认如何提交报告","the booking was updated today, will finish tomorrow / booking信息今天已更新,将于明天完成","the final PL received this morning, will finish tomorrow / 今天上午已收到最终装箱单，将于明天完成","the pictures were provided by supplier today, will finish today / 供应商今天已提供照片，今天完成","one report was not submitted successfully, will submit again today / 有一份报告未能成功提交，今天会重新提交","will finish today/tomorrow / 今天/明天完成","too many report, will finish tomorrow / 报告太多，将于明天完成","The inspector OT yesterday, will finsh today / 验货员昨天加班了，今天完成","Other / 其他"];
 const RAUTO={"waiting for IP update to re-submit the report / 等待IP 更新后重新提交报告":"PM","waiting for final PL / 等待最终装箱单":"PM","Waiting for final PL and booking update / 等待最终装箱单和 booking更新":"PM","Waiting for booking update / 等待 booking更新":"PM","Waiting for seal picture, need support from PM / 等待封条照片，需要 PM 协助":"PM","The container still not loding yet, pls change the last day of inspection / 集装箱还未开始装货，请更改最终验货日期":"PM","The order will be cancelled, pls change the status / 订单将被取消，请更改状态":"PM","Waiting for AM to update booking / 等待 AM更新 booking 信息":"AM","Waiting for AM to confirm how to submit the report / 等待AM确认如何提交报告":"AM","the booking was updated today, will finish tomorrow / booking信息今天已更新,将于明天完成":"Inspector","the final PL received this morning, will finish tomorrow / 今天上午已收到最终装箱单，将于明天完成":"Inspector","the pictures were provided by supplier today, will finish today / 供应商今天已提供照片，今天完成":"Inspector","one report was not submitted successfully, will submit again today / 有一份报告未能成功提交，今天会重新提交":"Inspector","will finish today/tomorrow / 今天/明天完成":"Inspector","too many report, will finish tomorrow / 报告太多，将于明天完成":"Inspector","The inspector OT yesterday, will finsh today / 验货员昨天加班了，今天完成":"Inspector"};
 const ROPTS=["","PM","AM","Inspector","PM/Inspector","AM/Inspector","IT"],RAITL=["Inspector","PM/Inspector","AM/Inspector"],RMITL=["PM","AM"],RNITL=["IT"];
+
 const OITL={"shenzhen office":"Jason Lee","guangzhou office":"Jason Lee","hongkong office":"Jason Lee","hong kong office":"Jason Lee","qingdao office":"Jason Lee","beijing office":"Jason Lee","tianjin office":"Jason Lee","tianjing office":"Jason Lee","anhui office":"Jason Lee","shanghai office":"Joe Cai","xiamen office":"Nina Wu","taiwan office":"Nina Wu","nanjing office":"Jason/Joe","ningbo office":"Nina Wu & John Shen","hangzhou office":"Nina Wu & John Shen"};
 const ISOTH=r=>r==="Other / 其他";
 
@@ -160,79 +161,38 @@ function cL(l){const r=[];let c="",q=false;for(const ch of l){if(ch==='"'){q=!q}
 function fC(r,cd){const ks=Object.keys(r);for(const c of cd){const f=ks.find(k=>k.toLowerCase().trim()===c.toLowerCase().trim());if(f!==undefined)return r[f]??""}return""}
 function bO(rs){const d=rs.filter(r=>String(fC(r,["QIMA Ref.","QIMA Ref"])).trim().startsWith("Q"));if(!d.length){showT("No valid rows");return}ORD=d.map(r=>({insDate:String(fC(r,["Inspection date","Inspection Date"])).trim(),ref:String(fC(r,["QIMA Ref.","QIMA Ref"])).trim(),client:String(fC(r,["Client name","Client Name"])).trim(),reports:String(fC(r,["Reports","reports"])).trim(),lastDay:String(fC(r,["Last Day Of Inspection","Last Day"])).trim(),days:parseInt(fC(r,["Days","days"]),10)||0,insp:String(fC(r,["Responsible name","Responsible Name","Inspector","Inspectors"])).trim(),office:String(fC(r,["Leader","leader","Office","office"])).trim(),reason:"",comment:"",responsible:"",itlpm:""}));flt=[...ORD];rOff();applyF();saveC();document.getElementById("exportBtn").disabled=false;showT(`Loaded ${ORD.length} orders`)}
 
-// ── 完全匹配原始文件格式的导出 ───────────────────────────────
+// 导出Excel函数 - 完全匹配原始文件格式
 function exportToExcel(){
   if(!ORD.length){showT("No data");return}
-  
-  // 列顺序完全与原始文件一致
   const hd=["Inspection date","QIMA Ref.","Client name","Reports","Last Day Of Inspection","Days","Report status actions detailed","Responsible","Responsible name","Leader","Due date"];
-  
   const rows=ORD.map(o=>[
-    o.insDate,           // Inspection date - keep original format
-    o.ref,               // QIMA Ref.
-    o.client,            // Client name
-    o.reports||"",       // Reports
-    o.lastDay,           // Last Day Of Inspection - keep original format
-    o.days,              // Days
-    sDetail(o),          // Report status actions detailed → Reason/Comment
-    effResp(o),          // Responsible
-    rName(o),            // Responsible name
-    ldr(o),              // Leader
-    RD                   // Due date
+    o.insDate,o.ref,o.client,o.reports||"",o.lastDay,o.days,
+    sDetail(o),effResp(o),rName(o),ldr(o),RD
   ]);
-
-  const wb=XLSX.utils.book_new();
-  const ws=XLSX.utils.aoa_to_sheet([hd,...rows]);
-  
-  // 列宽（匹配原始文件）
+  const wb=XLSX.utils.book_new(),ws=XLSX.utils.aoa_to_sheet([hd,...rows]);
   ws['!cols']=[{wch:14},{wch:20},{wch:50},{wch:8},{wch:16},{wch:7},{wch:55},{wch:16},{wch:40},{wch:24},{wch:12}];
-
-  // 格式化所有单元格
   const ref=XLSX.utils.decode_range(ws['!ref']);
   for(let R=ref.s.r;R<=ref.e.r;R++){
     for(let C=ref.s.c;C<=ref.e.c;C++){
       const cell=ws[XLSX.utils.encode_cell({r:R,c:C})];
       if(!cell)continue;
-      
-      // 基础格式：Arial 10，黑色，细边框
-      cell.s={
-        font:{name:'Arial',sz:10,color:{rgb:"000000"}},
-        alignment:{vertical:'center',wrapText:true},
-        border:{top:{style:'thin',color:{auto:1}},bottom:{style:'thin',color:{auto:1}},left:{style:'thin',color:{auto:1}},right:{style:'thin',color:{auto:1}}}
-      };
-      
-      // 表头行：钢蓝浅色40% (#B4C6E7)，居中，加粗
-      if(R===0){
-        cell.s.fill={fgColor:{rgb:"B4C6E7"}};
-        cell.s.font={name:'Arial',sz:10,bold:true,color:{rgb:"000000"}};
-        cell.s.alignment={horizontal:'center',vertical:'center',wrapText:true};
-      } else {
-        // 数据行对齐
-        const centerCols=[0,1,3,4,5,7,8,9,10]; // A,B,D,E,F,H,I,J,K
-        cell.s.alignment.horizontal=centerCols.includes(C)?'center':'left';
-      }
+      cell.s={font:{name:'Arial',sz:10},alignment:{vertical:'center',wrapText:true},border:{top:{style:'thin',color:{auto:1}},bottom:{style:'thin',color:{auto:1}},left:{style:'thin',color:{auto:1}},right:{style:'thin',color:{auto:1}}}};
+      if(R===0){cell.s.fill={fgColor:{rgb:"B4C6E7"}};cell.s.font={name:'Arial',sz:10,bold:true};cell.s.alignment={horizontal:'center',vertical:'center',wrapText:true}}else{cell.s.alignment.horizontal=[0,1,3,4,5,7,8,9,10].includes(C)?'center':'left'}
     }
   }
-
   XLSX.utils.book_append_sheet(wb,ws,"Late Report");
-  const fn=`Late_Report_Filled_${(RD||"unknown").replace(/-/g,"")}.xlsx`;
-  XLSX.writeFile(wb,fn);
-  showT(`Exported: ${fn}`);
+  XLSX.writeFile(wb,`Late_Report_Filled_${(RD||"unknown").replace(/-/g,"")}.xlsx`);
+  showT("Exported!");
 }
 
 const esc=s=>String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 const escJ=s=>String(s??"").replace(/\\/g,"\\\\").replace(/'/g,"\\'");
-
 function rOff(){const s=document.getElementById("filterOffice"),os=[...new Set(ORD.map(o=>(o.office||"").trim()).filter(Boolean))].sort();s.innerHTML=`<option value="">All Offices</option>`+os.map(o=>`<option value="${esc(o)}">${esc(o)}</option>`).join("")}
-
 function rT(data){const tb=document.getElementById("tableBody");if(!ORD.length){tb.innerHTML=`<tr><td colspan="12"><div class="empty-state"><div class="icon">📂</div><p>No data loaded yet.<br>Click <b>📂 Upload Late Report</b> to upload your file.</p></div></td></tr>`;uS();return}if(!data.length){tb.innerHTML=`<tr><td colspan="12" style="text-align:center;padding:40px;color:#888;">No matches.</td></tr>`;uS();return}tb.innerHTML=data.map((o,i)=>{const io=ISOTH(o.reason),ce=io&&!(o.comment||"").trim(),fl=isFilled(o),r=effResp(o),itl=itlpmInfo(o.office,r);let ih;if(!r)ih='<span class="cell-dash">—</span>';else if(itl.m==="man"){const ie=!(o.itlpm||"").trim();ih=`<input class="itlpm-inp ${ie?"error":""}" type="text" value="${esc(o.itlpm||"")}" placeholder="Enter name..." oninput="uF('${escJ(o.ref)}','itlpm',this.value)"><div class="field-warning ${ie?"show":""}">Required</div>`}else if(itl.m==="na")ih='<span class="cell-na">N/A</span>';else if(itl.m==="aut")ih=`<span class="cell-readonly">${esc(itl.v||"—")}</span>`;else ih='<span class="cell-dash">—</span>';let rh;if(io){const re=io&&!(o.responsible||"").trim();rh=`<select class="responsible-sel ${re?"error":""}" onchange="uResp('${escJ(o.ref)}',this.value)">${ROPTS.map(op=>`<option value="${esc(op)}" ${o.responsible===op?"selected":""}>${esc(op||"— Select —")}</option>`).join("")}</select><div class="field-warning ${re?"show":""}">Required</div>`}else rh=`<span class="cell-readonly">${esc(autoResp(o.reason)||"—")}</span>`;return`<tr class="${fl?"filled":""}" data-ref="${esc(o.ref)}"><td>${i+1}</td><td style="font-family:monospace;font-size:11.5px">${esc(o.ref)}</td><td style="max-width:190px;font-size:12px" title="${esc(o.client)}">${esc(o.client)}</td><td style="font-size:12px">${esc(o.lastDay)}</td><td>${o.days}</td><td style="max-width:160px;font-size:11px;color:#555" title="${esc(o.insp)}">${esc(o.insp)||"-"}</td><td style="font-size:11.5px">${esc(o.office)}</td><td class="td-itlpm">${ih}</td><td><select class="reason-sel" onchange="uReason('${escJ(o.ref)}',this.value)">${ROPT.map(r=>`<option value="${esc(r)}" ${o.reason===r?"selected":""}>${esc(r||"— Select —")}</option>`).join("")}</select></td><td><input class="comment-inp ${ce?"error":""}" type="text" value="${esc(o.comment)}" placeholder="${io?"Required":"Optional"}" oninput="uF('${escJ(o.ref)}','comment',this.value)"><div class="field-warning ${ce?"show":""}">Required</div></td><td class="td-resp">${rh}</td><td style="text-align:center"><span class="status-dot ${fl?"dot-filled":"dot-pending"}"></span><span style="font-size:11px">${fl?"Filled":"Pending"}</span></td></tr>`}).join("");uS()}
-
 function rR(rf){const o=ORD.find(x=>x.ref===rf);if(!o)return;const tr=document.querySelector(`tr[data-ref="${CSS.escape(rf)}"]`);if(!tr)return;const fl=isFilled(o),io=ISOTH(o.reason);fl?tr.classList.add("filled"):tr.classList.remove("filled");const r=effResp(o),itl=itlpmInfo(o.office,r);let ih;if(!r)ih='<span class="cell-dash">—</span>';else if(itl.m==="man"){const ie=!(o.itlpm||"").trim();ih=`<input class="itlpm-inp ${ie?"error":""}" type="text" value="${esc(o.itlpm||"")}" placeholder="Enter name..." oninput="uF('${escJ(o.ref)}','itlpm',this.value)"><div class="field-warning ${ie?"show":""}">Required</div>`}else if(itl.m==="na")ih='<span class="cell-na">N/A</span>';else if(itl.m==="aut")ih=`<span class="cell-readonly">${esc(itl.v||"—")}</span>`;else ih='<span class="cell-dash">—</span>';tr.querySelector(".td-itlpm").innerHTML=ih;let rh;if(io){const re=io&&!(o.responsible||"").trim();rh=`<select class="responsible-sel ${re?"error":""}" onchange="uResp('${escJ(o.ref)}',this.value)">${ROPTS.map(op=>`<option value="${esc(op)}" ${o.responsible===op?"selected":""}>${esc(op||"— Select —")}</option>`).join("")}</select><div class="field-warning ${re?"show":""}">Required</div>`}else rh=`<span class="cell-readonly">${esc(autoResp(o.reason)||"—")}</span>`;tr.querySelector(".td-resp").innerHTML=rh;const ci=tr.querySelector(".comment-inp");if(ci){const ce=io&&!(o.comment||"").trim();ci.classList.toggle("error",ce);ci.placeholder=io?"Required":"Optional";const cw=ci.nextElementSibling;if(cw)cw.classList.toggle("show",ce)}const st=tr.querySelector(".status-dot+span");if(st)st.textContent=fl?"Filled":"Pending";uS()}
-
 function uReason(rf,v){const o=ORD.find(x=>x.ref===rf);if(!o)return;o.reason=v;o.responsible=ISOTH(v)?"":autoResp(v);o.itlpm="";rR(rf);saveC()}
 function uResp(rf,v){const o=ORD.find(x=>x.ref===rf);if(!o)return;o.responsible=v;o.itlpm="";rR(rf);saveC()}
 function uF(rf,f,v){const o=ORD.find(x=>x.ref===rf);if(!o)return;o[f]=v;it=true;const tr=document.querySelector(`tr[data-ref="${CSS.escape(rf)}"]`);if(!tr)return;const fl=isFilled(o),io=ISOTH(o.reason);fl?tr.classList.add("filled"):tr.classList.remove("filled");if(f==="comment"){const inp=tr.querySelector(".comment-inp");if(inp&&io){const ce=!(o.comment||"").trim();inp.classList.toggle("error",ce);const w=inp.nextElementSibling;if(w)w.classList.toggle("show",ce)}}if(f==="itlpm"){const inp=tr.querySelector(".itlpm-inp");if(inp){const ie=!(o.itlpm||"").trim();inp.classList.toggle("error",ie);const w=inp.nextElementSibling;if(w)w.classList.toggle("show",ie)}}const st=tr.querySelector(".status-dot+span");if(st)st.textContent=fl?"Filled":"Pending";uS();clearTimeout(dt);dt=setTimeout(()=>{it=false;saveC()},2000)}
-
 function applyF(){const of=document.getElementById("filterOffice").value.trim().toLowerCase(),rs=document.getElementById("filterResponsible").value.trim(),st=document.getElementById("filterStatus").value.trim().toLowerCase(),df=document.getElementById("filterDays").value.trim().toLowerCase(),kw=document.getElementById("searchBox").value.trim().toLowerCase();flt=ORD.filter(o=>{const om=!of||(o.office||"").toLowerCase()===of,rm=!rs||effResp(o)===rs,sm=!st||(st==="filled"?isFilled(o):!isFilled(o)),dm=!df||(df==="orange"?o.days>=7:df==="yellow"?o.days>=3&&o.days<=6:o.days<=2),km=!kw||`${o.ref} ${o.client} ${o.insp} ${o.office}`.toLowerCase().includes(kw);return om&&rm&&sm&&dm&&km});rT(flt)}
 function uS(){const t=ORD.length,f=ORD.filter(isFilled).length;document.getElementById("statTotal").textContent=t;document.getElementById("statFilled").textContent=f;document.getElementById("statPending").textContent=t-f;document.getElementById("statOrange").textContent=ORD.filter(o=>o.days>=7).length;document.getElementById("progressLabel").textContent=`${f}/${t} filled`;document.getElementById("progressFill").style.width=t?`${f/t*100}%`:"0%"}
 function genE(){const r=ORD.filter(isFilled);if(!r.length)return"No filled orders yet.";let t=`Subject: Late Report Update - ${RD}\n\nDear Team,\n\n`;r.forEach((o,i)=>{const er=ISOTH(o.reason)?o.responsible:autoResp(o.reason),it=itlpmInfo(o.office,er),pm=it.m==="man"?(o.itlpm||"-"):(it.v||"-");t+=`${i+1}. ${o.ref}\n   Client: ${o.client}\n   Last Day: ${o.lastDay}\n   Days: ${o.days}\n   Insp: ${o.insp||"-"}\n   Office: ${o.office||"-"}\n   ITL/PM: ${pm}\n   Reason: ${o.reason||"-"}\n   Comment: ${o.comment||"-"}\n   Responsible: ${er||"-"}\n\n`});return t+"Best regards,\nITL"}
