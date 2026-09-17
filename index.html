@@ -135,10 +135,8 @@ const POLL_MS=5000;
 const ROPT=["","waiting for IP update to re-submit the report / 等待IP 更新后重新提交报告","waiting for final PL / 等待最终装箱单","Waiting for final PL and booking update / 等待最终装箱单和 booking更新","Waiting for booking update / 等待 booking更新","Waiting for seal picture, need support from PM / 等待封条照片，需要 PM 协助","The container still not loding yet, pls change the last day of inspection / 集装箱还未开始装货，请更改最终验货日期","The order will be cancelled, pls change the status / 订单将被取消，请更改状态","Waiting for AM to update booking / 等待 AM更新 booking 信息","Waiting for AM to confirm how to submit the report / 等待AM确认如何提交报告","the booking was updated today, will finish tomorrow / booking信息今天已更新,将于明天完成","the final PL received this morning, will finish tomorrow / 今天上午已收到最终装箱单，将于明天完成","the pictures were provided by supplier today, will finish today / 供应商今天已提供照片，今天完成","one report was not submitted successfully, will submit again today / 有一份报告未能成功提交，今天会重新提交","will finish today/tomorrow / 今天/明天完成","too many report, will finish tomorrow / 报告太多，将于明天完成","The inspector OT yesterday, will finsh today / 验货员昨天加班了，今天完成","Other / 其他"];
 const RAUTO={"waiting for IP update to re-submit the report / 等待IP 更新后重新提交报告":"PM","waiting for final PL / 等待最终装箱单":"PM","Waiting for final PL and booking update / 等待最终装箱单和 booking更新":"PM","Waiting for booking update / 等待 booking更新":"PM","Waiting for seal picture, need support from PM / 等待封条照片，需要 PM 协助":"PM","The container still not loding yet, pls change the last day of inspection / 集装箱还未开始装货，请更改最终验货日期":"PM","The order will be cancelled, pls change the status / 订单将被取消，请更改状态":"PM","Waiting for AM to update booking / 等待 AM更新 booking 信息":"AM","Waiting for AM to confirm how to submit the report / 等待AM确认如何提交报告":"AM","the booking was updated today, will finish tomorrow / booking信息今天已更新,将于明天完成":"Inspector","the final PL received this morning, will finish tomorrow / 今天上午已收到最终装箱单，将于明天完成":"Inspector","the pictures were provided by supplier today, will finish today / 供应商今天已提供照片，今天完成":"Inspector","one report was not submitted successfully, will submit again today / 有一份报告未能成功提交，今天会重新提交":"Inspector","will finish today/tomorrow / 今天/明天完成":"Inspector","too many report, will finish tomorrow / 报告太多，将于明天完成":"Inspector","The inspector OT yesterday, will finsh today / 验货员昨天加班了，今天完成":"Inspector"};
 const ROPTS=["","PM","AM","Inspector","PM/Inspector","AM/Inspector","IT"],RAITL=["Inspector","PM/Inspector","AM/Inspector"],RMITL=["PM","AM"],RNITL=["IT"];
-
 const OITL={"shenzhen office":"Jason Lee","guangzhou office":"Jason Lee","hongkong office":"Jason Lee","hong kong office":"Jason Lee","qingdao office":"Jason Lee","beijing office":"Jason Lee","tianjin office":"Jason Lee","tianjing office":"Jason Lee","anhui office":"Jason Lee","shanghai office":"Joe Cai","xiamen office":"Nina Wu","taiwan office":"Nina Wu","nanjing office":"Jason/Joe","ningbo office":"Nina Wu & John Shen","hangzhou office":"Nina Wu & John Shen"};
 const ISOTH=r=>r==="Other / 其他";
-
 function autoResp(r){return RAUTO[r]||""}
 function itlpmInfo(off,resp){if(!resp)return{m:"n",v:""};if(RMITL.includes(resp))return{m:"man",v:""};if(RNITL.includes(resp))return{m:"na",v:"N/A"};if(RAITL.includes(resp))return{m:"aut",v:OITL[(off||"").toLowerCase().trim()]||""};return{m:"n",v:""}}
 function isFilled(o){if(!(o.reason||"").trim())return false;const r=ISOTH(o.reason)?(o.responsible||""):autoResp(o.reason);if(ISOTH(o.reason)){if(!(o.comment||"").trim())return false;if(!r)return false}if(RMITL.includes(r)&&!(o.itlpm||"").trim())return false;return true}
@@ -146,40 +144,11 @@ function effResp(o){return ISOTH(o.reason)?(o.responsible||""):autoResp(o.reason
 function sDetail(o){return ISOTH(o.reason)?(o.comment||""):(o.reason||"")}
 function rName(o){const r=effResp(o);if(RAITL.includes(r))return o.inspectors||"";if(RMITL.includes(r))return o.itlpm||"";return""}
 function ldr(o){const r=effResp(o);if(r==="PM")return"Vicky/Emily";if(r==="AM")return"Thalia/Emilio/Diana";if(RAITL.includes(r)){const it=itlpmInfo(o.office,r);return it.m==="aut"?(it.v||""):(o.itlpm||"")}return""}
-
-// 日期格式化函数
-function formatDateForDisplay(date){
-  if(!date)return"";
-  if(date instanceof Date){
-    const y=date.getFullYear();
-    const m=String(date.getMonth()+1).padStart(2,"0");
-    const d=String(date.getDate()).padStart(2,"0");
-    return `${y}-${m}-${d}`;
-  }
-  return String(date);
-}
-
-function parseExcelDate(val){
-  if(!val)return null;
-  if(val instanceof Date){
-    return isNaN(val.getTime())?null:val;
-  }
-  if(typeof val==="number"){
-    const d=new Date(1900,0,val);
-    return d;
-  }
-  if(typeof val==="string"){
-    const d=new Date(val);
-    if(!isNaN(d.getTime()))return d;
-  }
-  return null;
-}
-
+function formatDateForDisplay(date){if(!date)return"";if(date instanceof Date){const y=date.getFullYear();const m=String(date.getMonth()+1).padStart(2,"0");const d=String(date.getDate()).padStart(2,"0");return `${y}-${m}-${d}`;}return String(date);}
+function parseExcelDate(val){if(!val)return null;if(val instanceof Date){return isNaN(val.getTime())?null:val;}if(typeof val==="number"){const d=new Date(1900,0,val);return d;}if(typeof val==="string"){const d=new Date(val);if(!isNaN(d.getTime()))return d;}return null;}
 let ORD=[],flt=[],RD="",pt=null,sv=false,lh="",dt=null,it=false,pfd=null,pfn="";
-
 function serializeOrder(o){return{insDate:o.insDate instanceof Date?o.insDate.toISOString():o.insDate,ref:o.ref,client:o.client,reports:o.reports,lastDay:o.lastDay instanceof Date?o.lastDay.toISOString():o.lastDay,days:o.days,insp:o.insp,office:o.office,reason:o.reason,comment:o.comment,responsible:o.responsible,itlpm:o.itlpm}}
 function deserializeOrder(o){return{insDate:o.insDate&&typeof o.insDate==='string'?new Date(o.insDate):o.insDate,ref:o.ref,client:o.client,reports:o.reports,lastDay:o.lastDay&&typeof o.lastDay==='string'?new Date(o.lastDay):o.lastDay,days:o.days,insp:o.insp,office:o.office,reason:o.reason||"",comment:o.comment||"",responsible:o.responsible||"",itlpm:o.itlpm||""}}
-
 function sUI(s,l){document.getElementById("syncDot").className="sync-dot"+(s==="s"?" syncing":s==="e"?" error":"");document.getElementById("syncLabel").textContent=l}
 function hsh(o){return JSON.stringify(o.map(x=>x.ref+x.reason+x.comment+x.responsible+x.itlpm))}
 async function saveC(){if(sv)return;sv=true;sUI("s","Saving...");try{const b=JSON.stringify({reportDate:RD,fileName:document.getElementById("uploadStatus").textContent.replace("📄 ",""),orders:ORD.map(serializeOrder)});const r=await fetch(API,{method:"PUT",headers:HDR_WR,body:b});if(!r.ok)throw Error(r.status);lh=hsh(ORD);sUI("o","Saved ✓")}catch(e){sUI("e","Save failed")}finally{sv=false}}
@@ -191,41 +160,9 @@ function pXLSX(b){try{const wb=XLSX.read(b,{type:"array",cellDates:true});const 
 function pCSV(t){try{const ls=t.trim().split("\n");let hi=0;for(let i=0;i<ls.length;i++){if(ls[i].toLowerCase().includes("qima ref")){hi=i;break}}const hd=cL(ls[hi]).map(h=>h.trim()),rows=[];for(let i=hi+1;i<ls.length;i++){if(!ls[i].trim())continue;const v=cL(ls[i]),o={};hd.forEach((h,idx)=>{o[h]=(v[idx]||"").trim()});rows.push(o)}bO(rows)}catch(e){showT("Failed")}}
 function cL(l){const r=[];let c="",q=false;for(const ch of l){if(ch==='"'){q=!q}else if(ch===","&&!q){r.push(c);c=""}else{c+=ch}}r.push(c);return r}
 function fC(r,cd){const ks=Object.keys(r);for(const c of cd){const f=ks.find(k=>k.toLowerCase().trim()===c.toLowerCase().trim());if(f!==undefined)return r[f]??""}return""}
-function bO(rs){const d=rs.filter(r=>String(fC(r,["QIMA Ref.","QIMA Ref"])).trim().startsWith("Q"));if(!d.length){showT("No valid rows");return}ORD=d.map(r=>{const inspDateVal=fC(r,["Inspection date","Inspection Date"]),lastDayVal=fC(r,["Last Day Of Inspection","Last Day"]);let insDate=null,lastDay=null;if(inspDateVal instanceof Date){insDate=inspDateVal}else if(inspDateVal){insDate=parseExcelDate(inspDateVal)}if(lastDayVal instanceof Date){lastDay=lastDayVal}else if(lastDayVal){lastDay=parseExcelDate(lastDayVal)}return{insDate:insDate,ref:String(fC(r,["QIMA Ref.","QIMA Ref"])).trim(),client:String(fC(r,["Client name","Client Name"])).trim(),reports:String(fC(r,["Reports","reports"])).trim(),lastDay:lastDay,days:parseInt(fC(r,["Days","days"]),10)||0,insp:String(fC(r,["Responsible name","Responsible Name","Inspector","Inspectors"])).trim(),office:String(fC(r,["Leader","leader","Office","office"])).trim(),reason:"",comment:"",responsible:"",itlpm:""}});flt=[...ORD];rOff();applyF();saveC();document.getElementById("exportBtn").disabled=false;showT(`Loaded ${ORD.length} orders`)}
-
-function exportToExcel(){
-  if(!ORD.length){showT("No data");return}
-  const hd=["Inspection date","QIMA Ref.","Client name","Reports","Last Day Of Inspection","Days","Report status actions detailed","Responsible","Responsible name","Leader","Due date"];
-  const rows=ORD.map(o=>{
-    let dueDate=null;
-    if(RD){
-      const parts=RD.split('-');
-      if(parts.length===3){
-        dueDate=new Date(parseInt(parts[0]),parseInt(parts[1])-1,parseInt(parts[2]));
-      }
-    }
-    return[o.insDate||"",o.ref,o.client,o.reports||"",o.lastDay||"",o.days,sDetail(o),effResp(o),rName(o),ldr(o),dueDate||""];
-  });
-  const wb=XLSX.utils.book_new();
-  const ws=XLSX.utils.aoa_to_sheet([hd,...rows]);
-  ws['!cols']=[{wch:14},{wch:20},{wch:50},{wch:8},{wch:16},{wch:7},{wch:55},{wch:16},{wch:40},{wch:24},{wch:12}];
-  const ref=XLSX.utils.decode_range(ws['!ref']);
-  for(let R=ref.s.r;R<=ref.e.r;R++){
-    for(let C=ref.s.c;C<=ref.e.c;C++){
-      const cellRef=XLSX.utils.encode_cell({r:R,c:C});
-      const cell=ws[cellRef];
-      if(!cell)continue;
-      cell.s={font:{name:'Arial',sz:10},alignment:{vertical:'center',wrapText:true},border:{top:{style:'thin',color:{auto:1}},bottom:{style:'thin',color:{auto:1}},left:{style:'thin',color:{auto:1}},right:{style:'thin',color:{auto:1}}}};
-      if(R===0){cell.s.fill={fgColor:{rgb:"B4C6E7"}};cell.s.font={name:'Arial',sz:10,bold:true};cell.s.alignment={horizontal:'center',vertical:'center',wrapText:true};}else{cell.s.alignment.horizontal=[0,1,3,4,5,7,8,9,10].includes(C)?'center':'left';if([0,4,10].includes(C)&&cell.v instanceof Date){cell.z='mm-dd-yy';}}
-    }
-  }
-  XLSX.utils.book_append_sheet(wb,ws,"Late Report");
-  XLSX.writeFile(wb,`Late_Report_Filled_${(RD||"unknown").replace(/-/g,"")}.xlsx`);
-  showT("Exported!");
-}
-
-const esc=s=>String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
-const escJ=s=>String(s??"").replace(/\\/g,"\\\\").replace(/'/g,"\\'");
+function bO(rs){const d=rs.filter(r=>String(fC(r,["QIMA Ref.","QIMA Ref"])).trim().startsWith("Q"));if(!d.length){showT("No valid rows");return}ORD=d.map(r=>{const inspDateVal=fC(r,["Inspection date","Inspection Date"]),lastDayVal=fC(r,["Last Day Of Inspection","Last Day","Last Day Of Inspection"]);console.log("Debug - inspDateVal:",inspDateVal,"type:",typeof inspDateVal,"instanceof Date:",inspDateVal instanceof Date);let insDate=null,lastDay=null;if(inspDateVal instanceof Date){insDate=new Date(inspDateVal.getFullYear(),inspDateVal.getMonth(),inspDateVal.getDate())}else if(typeof inspDateVal==="string"){if(inspDateVal.match(/\d{1,2}-\w{3}-\d{2}/)){const d=new Date(inspDateVal);insDate=isNaN(d.getTime())?null:d}else{insDate=parseExcelDate(inspDateVal)}}else if(typeof inspDateVal==="number"){insDate=parseExcelDate(inspDateVal)}if(lastDayVal instanceof Date){lastDay=new Date(lastDayVal.getFullYear(),lastDayVal.getMonth(),lastDayVal.getDate())}else if(typeof lastDayVal==="string"){if(lastDayVal.match(/\d{1,2}-\w{3}-\d{2}/)){const d=new Date(lastDayVal);lastDay=isNaN(d.getTime())?null:d}else{lastDay=parseExcelDate(lastDayVal)}}else if(typeof lastDayVal==="number"){lastDay=parseExcelDate(lastDayVal)}return{insDate:insDate,ref:String(fC(r,["QIMA Ref.","QIMA Ref"])).trim(),client:String(fC(r,["Client name","Client Name"])).trim(),reports:String(fC(r,["Reports","reports"])).trim(),lastDay:lastDay,days:parseInt(fC(r,["Days","days"]),10)||0,insp:String(fC(r,["Responsible name","Responsible Name","Inspector","Inspectors"])).trim(),office:String(fC(r,["Leader","leader","Office","office"])).trim(),reason:"",comment:"",responsible:"",itlpm:""}});flt=[...ORD];rOff();applyF();saveC();document.getElementById("exportBtn").disabled=false;showT(`Loaded ${ORD.length} orders`)}
+function exportToExcel(){if(!ORD.length){showT("No data");return}const hd=["Inspection date","QIMA Ref.","Client name","Reports","Last Day Of Inspection","Days","Report status actions detailed","Responsible","Responsible name","Leader","Due date"];const rows=ORD.map(o=>{let inspDate=null;if(o.insDate instanceof Date){inspDate=new Date(o.insDate.getFullYear(),o.insDate.getMonth(),o.insDate.getDate())}else if(typeof o.insDate==="string" && o.insDate){const parsed=new Date(o.insDate);if(!isNaN(parsed.getTime())){inspDate=new Date(parsed.getFullYear(),parsed.getMonth(),parsed.getDate())}}let lastDay=null;if(o.lastDay instanceof Date){lastDay=new Date(o.lastDay.getFullYear(),o.lastDay.getMonth(),o.lastDay.getDate())}else if(typeof o.lastDay==="string" && o.lastDay){const parsed=new Date(o.lastDay);if(!isNaN(parsed.getTime())){lastDay=new Date(parsed.getFullYear(),parsed.getMonth(),parsed.getDate())}}let dueDate=null;if(RD){const parts=RD.split('-');if(parts.length===3){dueDate=new Date(parseInt(parts[0]),parseInt(parts[1])-1,parseInt(parts[2]))}}return[inspDate||"",o.ref,o.client,o.reports||"",lastDay||"",o.days,sDetail(o),effResp(o),rName(o),ldr(o),dueDate||""];});const wb=XLSX.utils.book_new();const ws=XLSX.utils.aoa_to_sheet([hd,...rows]);ws['!cols']=[{wch:14},{wch:20},{wch:50},{wch:8},{wch:16},{wch:7},{wch:55},{wch:16},{wch:40},{wch:24},{wch:12}];const ref=XLSX.utils.decode_range(ws['!ref']);for(let R=ref.s.r;R<=ref.e.r;R++){for(let C=ref.s.c;C<=ref.e.c;C++){const cellRef=XLSX.utils.encode_cell({r:R,c:C});const cell=ws[cellRef];if(!cell)continue;cell.s={font:{name:'Arial',sz:10},alignment:{vertical:'center',wrapText:true},border:{top:{style:'thin',color:{auto:1}},bottom:{style:'thin',color:{auto:1}},left:{style:'thin',color:{auto:1}},right:{style:'thin',color:{auto:1}}}};if(R===0){cell.s.fill={fgColor:{rgb:"B4C6E7"}};cell.s.font={name:'Arial',sz:10,bold:true};cell.s.alignment={horizontal:'center',vertical:'center',wrapText:true};}else{cell.s.alignment.horizontal=[0,1,3,4,5,7,8,9,10].includes(C)?'center':'left';if([0,4,10].includes(C)&&cell.v instanceof Date){cell.z='mm-dd-yy';}}}}XLSX.utils.book_append_sheet(wb,ws,"Late Report");XLSX.writeFile(wb,`Late_Report_Filled_${(RD||"unknown").replace(/-/g,"")}.xlsx`);showT("Exported!");}
+const esc=s=>String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");const escJ=s=>String(s??"").replace(/\\/g,"\\\\").replace(/'/g,"\\'");
 function rOff(){const s=document.getElementById("filterOffice"),os=[...new Set(ORD.map(o=>(o.office||"").trim()).filter(Boolean))].sort();s.innerHTML=`<option value="">All Offices</option>`+os.map(o=>`<option value="${esc(o)}">${esc(o)}</option>`).join("")}
 function rT(data){const tb=document.getElementById("tableBody");if(!ORD.length){tb.innerHTML=`<tr><td colspan="12"><div class="empty-state"><div class="icon">📂</div><p>No data loaded yet.<br>Click <b>📂 Upload Late Report</b> to upload your file.</p></div></td></tr>`;uS();return}if(!data.length){tb.innerHTML=`<tr><td colspan="12" style="text-align:center;padding:40px;color:#888;">No matches.</td></tr>`;uS();return}tb.innerHTML=data.map((o,i)=>{const io=ISOTH(o.reason),ce=io&&!(o.comment||"").trim(),fl=isFilled(o),r=effResp(o),itl=itlpmInfo(o.office,r);let ih;if(!r)ih='<span class="cell-dash">—</span>';else if(itl.m==="man"){const ie=!(o.itlpm||"").trim();ih=`<input class="itlpm-inp ${ie?"error":""}" type="text" value="${esc(o.itlpm||"")}" placeholder="Enter name..." oninput="uF('${escJ(o.ref)}','itlpm',this.value)"><div class="field-warning ${ie?"show":""}">Required</div>`}else if(itl.m==="na")ih='<span class="cell-na">N/A</span>';else if(itl.m==="aut")ih=`<span class="cell-readonly">${esc(itl.v||"—")}</span>`;else ih='<span class="cell-dash">—</span>';let rh;if(io){const re=io&&!(o.responsible||"").trim();rh=`<select class="responsible-sel ${re?"error":""}" onchange="uResp('${escJ(o.ref)}',this.value)">${ROPTS.map(op=>`<option value="${esc(op)}" ${o.responsible===op?"selected":""}>${esc(op||"— Select —")}</option>`).join("")}</select><div class="field-warning ${re?"show":""}">Required</div>`}else rh=`<span class="cell-readonly">${esc(autoResp(o.reason)||"—")}</span>`;return`<tr class="${fl?"filled":""}" data-ref="${esc(o.ref)}"><td>${i+1}</td><td style="font-family:monospace;font-size:11.5px">${esc(o.ref)}</td><td style="max-width:190px;font-size:12px" title="${esc(o.client)}">${esc(o.client)}</td><td style="font-size:12px">${formatDateForDisplay(o.lastDay)}</td><td>${o.days}</td><td style="max-width:160px;font-size:11px;color:#555" title="${esc(o.insp)}">${esc(o.insp)||"-"}</td><td style="font-size:11.5px">${esc(o.office)}</td><td class="td-itlpm">${ih}</td><td><select class="reason-sel" onchange="uReason('${escJ(o.ref)}',this.value)">${ROPT.map(r=>`<option value="${esc(r)}" ${o.reason===r?"selected":""}>${esc(r||"— Select —")}</option>`).join("")}</select></td><td><input class="comment-inp ${ce?"error":""}" type="text" value="${esc(o.comment)}" placeholder="${io?"Required":"Optional"}" oninput="uF('${escJ(o.ref)}','comment',this.value)"><div class="field-warning ${ce?"show":""}">Required</div></td><td class="td-resp">${rh}</td><td style="text-align:center"><span class="status-dot ${fl?"dot-filled":"dot-pending"}"></span><span style="font-size:11px">${fl?"Filled":"Pending"}</span></td></tr>`}).join("");uS()}
 function rR(rf){const o=ORD.find(x=>x.ref===rf);if(!o)return;const tr=document.querySelector(`tr[data-ref="${CSS.escape(rf)}"]`);if(!tr)return;const fl=isFilled(o),io=ISOTH(o.reason);fl?tr.classList.add("filled"):tr.classList.remove("filled");const r=effResp(o),itl=itlpmInfo(o.office,r);let ih;if(!r)ih='<span class="cell-dash">—</span>';else if(itl.m==="man"){const ie=!(o.itlpm||"").trim();ih=`<input class="itlpm-inp ${ie?"error":""}" type="text" value="${esc(o.itlpm||"")}" placeholder="Enter name..." oninput="uF('${escJ(o.ref)}','itlpm',this.value)"><div class="field-warning ${ie?"show":""}">Required</div>`}else if(itl.m==="na")ih='<span class="cell-na">N/A</span>';else if(itl.m==="aut")ih=`<span class="cell-readonly">${esc(itl.v||"—")}</span>`;else ih='<span class="cell-dash">—</span>';tr.querySelector(".td-itlpm").innerHTML=ih;let rh;if(io){const re=io&&!(o.responsible||"").trim();rh=`<select class="responsible-sel ${re?"error":""}" onchange="uResp('${escJ(o.ref)}',this.value)">${ROPTS.map(op=>`<option value="${esc(op)}" ${o.responsible===op?"selected":""}>${esc(op||"— Select —")}</option>`).join("")}</select><div class="field-warning ${re?"show":""}">Required</div>`}else rh=`<span class="cell-readonly">${esc(autoResp(o.reason)||"—")}</span>`;tr.querySelector(".td-resp").innerHTML=rh;const ci=tr.querySelector(".comment-inp");if(ci){const ce=io&&!(o.comment||"").trim();ci.classList.toggle("error",ce);ci.placeholder=io?"Required":"Optional";const cw=ci.nextElementSibling;if(cw)cw.classList.toggle("show",ce)}const st=tr.querySelector(".status-dot+span");if(st)st.textContent=fl?"Filled":"Pending";uS()}
