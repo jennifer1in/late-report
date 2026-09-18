@@ -165,15 +165,22 @@
       <thead>
         <tr>
           <th style="width:28px">#</th>
-          <th>QIMA Ref.</th><th>Client</th><th>Last Day</th><th>Days</th>
-          <th>Inspector(s)</th><th>Office</th><th style="min-width:140px">ITL/PM</th>
+          <th>Insp Date</th>
+          <th>QIMA Ref.</th>
+          <th>Client</th>
+          <th>Last Day</th>
+          <th>Days</th>
+          <th>Inspector(s)</th>
+          <th>Office</th>
+          <th style="min-width:140px">ITL/PM</th>
           <th style="min-width:300px">原因 / Reason <span style="font-weight:300;font-size:10px">(required)</span></th>
           <th style="min-width:200px">备注 / Comment</th>
-          <th style="min-width:160px">责任方 / Responsible</th><th style="width:80px">Status</th>
+          <th style="min-width:160px">责任方 / Responsible</th>
+          <th style="width:80px">Status</th>
         </tr>
       </thead>
       <tbody id="tableBody">
-        <tr><td colspan="12"><div class="empty-state"><div class="icon">📂</div><p>No data loaded yet.<br>Click <b>📂 Upload Late Report</b> to upload your file.</p></div></td></tr>
+        <tr><td colspan="13"><div class="empty-state"><div class="icon">📂</div><p>No data loaded yet.<br>Click <b>📂 Upload Late Report</b> to upload your file.</p></div></td></tr>
       </tbody>
     </table>
   </div>
@@ -384,11 +391,12 @@ function fmtMMDDYY(d){
 function exportToExcel(){
   if(!ORD.length){ showT("⚠️ No data"); return; }
 
-  const hd = ["Inspection date","QIMA Ref.","Client name","Reports","Last Day Of Inspection","Days","Report status actions detailed","Responsible","Responsible name","Leader","Due date"];
-  const aligns = ["center","center","left","center","center","center","left","center","center","center","center"];
+  const hd = ["#","Inspection date","QIMA Ref.","Client name","Reports","Last Day Of Inspection","Days","Report status actions detailed","Responsible","Responsible name","Leader","Due date"];
+  const aligns = ["center","center","center","left","center","center","center","left","center","center","center","center"];
 
-  const rows = ORD.map(o => [
-    fmtMMDDYY(o.insDate),
+  const rows = ORD.map((o,i) => [
+    i+1,
+    o.insDate,
     o.ref,
     o.client,
     o.reports||"",
@@ -405,16 +413,22 @@ function exportToExcel(){
   const ws = XLSX.utils.aoa_to_sheet([hd, ...rows]);
 
   ws['!cols'] = [
-    {wch:12},{wch:20},{wch:50},{wch:8},
+    {wch:6},{wch:14},{wch:20},{wch:50},{wch:8},
     {wch:14},{wch:7},{wch:55},{wch:16},
     {wch:40},{wch:24},{wch:12}
   ];
 
+  // 将数字序号转为文本
   const ref = XLSX.utils.decode_range(ws['!ref']);
   for(let R=ref.s.r; R<=ref.e.r; R++){
     for(let C=ref.s.c; C<=ref.e.c; C++){
       const cell = ws[XLSX.utils.encode_cell({r:R,c:C})];
       if(!cell) continue;
+      // 将数值转为文本防止自动格式化
+      if(typeof cell.v === 'number' && R > 0) {
+        cell.t = 's';
+        cell.v = String(cell.v);
+      }
       cell.s = {
         font: { name: 'Arial', sz: 10 },
         alignment: { horizontal: aligns[C], vertical: 'center', wrapText: true },
@@ -454,10 +468,10 @@ function rOff(){
 function rT(data){
   const tb=document.getElementById("tableBody");
   if(!ORD.length){
-    tb.innerHTML=`<tr><td colspan="12"><div class="empty-state"><div class="icon">📂</div><p>No data loaded yet.<br>Click <b>📂 Upload Late Report</b> to upload your file.</p></div></td></tr>`;
+    tb.innerHTML=`<tr><td colspan="13"><div class="empty-state"><div class="icon">📂</div><p>No data loaded yet.<br>Click <b>📂 Upload Late Report</b> to upload your file.</p></div></td></tr>`;
     uS(); return;
   }
-  if(!data.length){ tb.innerHTML=`<tr><td colspan="12" style="text-align:center;padding:40px;color:#888;">No matches.</td></tr>`; uS(); return; }
+  if(!data.length){ tb.innerHTML=`<tr><td colspan="13" style="text-align:center;padding:40px;color:#888;">No matches.</td></tr>`; uS(); return; }
   tb.innerHTML=data.map((o,i)=>{
     const io=ISOTH(o.reason); const ce=io&&!(o.comment||"").trim(); const fl=isFilled(o);
     const r=effResp(o); const it=itlpmInfo(o.office,r);
@@ -480,6 +494,7 @@ function rT(data){
 
     return `<tr class="${fl?"filled":""}" data-ref="${esc(o.ref)}">
       <td>${i+1}</td>
+      <td>${esc(o.insDate)}</td>
       <td style="font-family:monospace;font-size:11.5px">${esc(o.ref)}</td>
       <td style="max-width:190px;font-size:12px" title="${esc(o.client)}">${esc(o.client)}</td>
       <td style="font-size:12px">${esc(o.lastDay)}</td>
