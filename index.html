@@ -139,8 +139,6 @@
 <div class="container">
   <div class="instructions">
     <b>使用方法：</b>上传文件后自动同步。选 <b>Other</b> 时 Comment + Responsible 必填。PM/AM 时 ITL/PM 需手动填写。填写完成后点击 <b>⬇️ Export Today's Data</b> 导出。
-    <br>
-    <b>Instructions:</b> Upload file → Fill in → Click <b>⬇️ Export Today's Data</b>.
   </div>
   <div class="filter-bar">
     <label>筛选:</label>
@@ -167,7 +165,7 @@
           <th style="width:28px">#</th>
           <th>QIMA Ref.</th><th>Client</th><th>Last Day</th><th>Days</th>
           <th>Inspector(s)</th><th>Office</th><th style="min-width:140px">ITL/PM</th>
-          <th style="min-width:300px">原因 / Reason <span style="font-weight:300;font-size:10px">(required)</span></th>
+          <th style="min-width:300px">原因 / Reason</th>
           <th style="min-width:200px">备注 / Comment</th>
           <th style="min-width:160px">责任方 / Responsible</th><th style="width:80px">Status</th>
         </tr>
@@ -194,7 +192,6 @@
     <h3>📅 Confirm Due Date</h3>
     <p style="font-size:12px;color:#666;margin-bottom:4px">请确认这份 Late Report 的 Due Date：</p>
     <input type="date" id="dateInput">
-    <p class="hint">💡 Due date 将用于导出的 K 列</p>
     <div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end">
       <button class="btn btn-outline" onclick="cancelUpload()">Cancel</button>
       <button class="btn btn-primary" onclick="confirmDate()">✅ Confirm</button>
@@ -224,15 +221,20 @@ const HDR_WR  = { "Content-Type":"application/json", "X-Master-Key":BIN_KEY, "X-
 const POLL_MS = 5000;
 
 const ROPT = ["","waiting for IP update to re-submit the report / 等待IP 更新后重新提交报告","waiting for final PL / 等待最终装箱单","Waiting for final PL and booking update / 等待最终装箱单和 booking更新","Waiting for booking update / 等待 booking更新","Waiting for seal picture, need support from PM / 等待封条照片，需要 PM 协助","The container still not loding yet, pls change the last day of inspection / 集装箱还未开始装货，请更改最终验货日期","The order will be cancelled, pls change the status / 订单将被取消，请更改状态","Waiting for AM to update booking / 等待 AM更新 booking 信息","Waiting for AM to confirm how to submit the report / 等待AM确认如何提交报告","the booking was updated today, will finish tomorrow / booking信息今天已更新,将于明天完成","the final PL received this morning, will finish tomorrow / 今天上午已收到最终装箱单，将于明天完成","the pictures were provided by supplier today, will finish today / 供应商今天已提供照片，今天完成","one report was not submitted successfully, will submit again today / 有一份报告未能成功提交，今天会重新提交","will finish today/tomorrow / 今天/明天完成","too many report, will finish tomorrow / 报告太多，将于明天完成","The inspector OT yesterday, will finsh today / 验货员昨天加班了，今天完成","Other / 其他"];
+
 const RAUTO = {"waiting for IP update to re-submit the report / 等待IP 更新后重新提交报告":"PM","waiting for final PL / 等待最终装箱单":"PM","Waiting for final PL and booking update / 等待最终装箱单和 booking更新":"PM","Waiting for booking update / 等待 booking更新":"PM","Waiting for seal picture, need support from PM / 等待封条照片，需要 PM 协助":"PM","The container still not loding yet, pls change the last day of inspection / 集装箱还未开始装货，请更改最终验货日期":"PM","The order will be cancelled, pls change the status / 订单将被取消，请更改状态":"PM","Waiting for AM to update booking / 等待 AM更新 booking 信息":"AM","Waiting for AM to confirm how to submit the report / 等待AM确认如何提交报告":"AM","the booking was updated today, will finish tomorrow / booking信息今天已更新,将于明天完成":"Inspector","the final PL received this morning, will finish tomorrow / 今天上午已收到最终装箱单，将于明天完成":"Inspector","the pictures were provided by supplier today, will finish today / 供应商今天已提供照片，今天完成":"Inspector","one report was not submitted successfully, will submit again today / 有一份报告未能成功提交，今天会重新提交":"Inspector","will finish today/tomorrow / 今天/明天完成":"Inspector","too many report, will finish tomorrow / 报告太多，将于明天完成":"Inspector","The inspector OT yesterday, will finsh today / 验货员昨天加班了，今天完成":"Inspector"};
+
 const ROPTS = ["","PM","AM","Inspector","PM/Inspector","AM/Inspector","IT"];
 const RAITL = ["Inspector","PM/Inspector","AM/Inspector"];
 const RMITL = ["PM","AM"];
 const RNITL = ["IT"];
+
 const OITL  = {"shenzhen office":"Jason Lee","guangzhou office":"Jason Lee","hongkong office":"Jason Lee","hong kong office":"Jason Lee","qingdao office":"Jason Lee","beijing office":"Jason Lee","tianjin office":"Jason Lee","tianjing office":"Jason Lee","anhui office":"Jason Lee","shanghai office":"Joe Cai","xiamen office":"Nina Wu","taiwan office":"Nina Wu","nanjing office":"Jason/Joe","ningbo office":"Nina Wu & John Shen","hangzhou office":"Nina Wu & John Shen"};
+
 const ISOTH = r => r === "Other / 其他";
 
 function autoResp(r){ return RAUTO[r]||""; }
+
 function itlpmInfo(off,resp){
   if(!resp) return {m:"n",v:""};
   if(RMITL.includes(resp)) return {m:"man",v:""};
@@ -240,6 +242,7 @@ function itlpmInfo(off,resp){
   if(RAITL.includes(resp)) return {m:"aut",v:OITL[(off||"").toLowerCase().trim()]||""};
   return {m:"n",v:""};
 }
+
 function isFilled(o){
   if(!(o.reason||"").trim()) return false;
   const r=ISOTH(o.reason)?(o.responsible||""):autoResp(o.reason);
@@ -247,6 +250,7 @@ function isFilled(o){
   if(RMITL.includes(r)&&!(o.itlpm||"").trim()) return false;
   return true;
 }
+
 function effResp(o){ return ISOTH(o.reason)?(o.responsible||""):autoResp(o.reason); }
 function sDetail(o){ return ISOTH(o.reason)?(o.comment||""):(o.reason||""); }
 function rName(o){
@@ -261,24 +265,6 @@ function ldr(o){
   if(r==="AM") return "Thalia/Emilio/Diana";
   if(RAITL.includes(r)){ const it=itlpmInfo(o.office,r); return it.m==="aut"?(it.v||""):(o.itlpm||""); }
   return "";
-}
-
-function bIC(o){
-  const r=effResp(o); const it=itlpmInfo(o.office,r);
-  if(!r) return '<span class="cell-dash">—</span>';
-  if(it.m==="man"){
-    const ie=!(o.itlpm||"").trim();
-    return `<input class="itlpm-inp ${ie?"error":""}" type="text" value="${esc(o.itlpm||"")}" placeholder="Enter name..." oninput="uF('${escJ(o.ref)}','itlpm',this.value)"><div class="field-warning ${ie?"show":""}">⚠️ Required</div>`;
-  }
-  if(it.m==="na")  return '<span class="cell-na">N/A</span>';
-  if(it.m==="aut") return `<span class="cell-readonly">${esc(it.v||"—")}</span>`;
-  return '<span class="cell-dash">—</span>';
-}
-function bRC(o){
-  const io=ISOTH(o.reason);
-  const re=io&&!(o.responsible||"").trim();
-  if(io) return `<select class="responsible-sel ${re?"error":""}" onchange="uResp('${escJ(o.ref)}',this.value)">${ROPTS.map(op=>`<option value="${esc(op)}" ${o.responsible===op?"selected":""}>${esc(op||"— Select —")}</option>`).join("")}</select><div class="field-warning ${re?"show":""}">⚠️ Required</div>`;
-  return `<span class="cell-readonly">${esc(autoResp(o.reason)||"—")}</span>`;
 }
 
 // ── State ─────────────────────────────────────────────────────
@@ -391,18 +377,16 @@ function fmtMMDDYY(d){
     const mo=MS[m[2]]||"01";
     return `${mo[0]==='0'?mo:mo.padStart(2,'0')}-${m[1]}-${m[3]}`;
   }
-  // yyyy-mm-dd -> mm-dd-yy
   const y=s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if(y) return `${y[2]}-${y[3]}-${y[1].slice(-2)}`;
   return s;
 }
 
 // ── Export ────────────────────────────────────────────────────
-function expX(){
+function exportToExcel(){
   if(!ORD.length){ showT("⚠️ No data"); return; }
 
   const hd = ["Inspection date","QIMA Ref.","Client name","Reports","Last Day Of Inspection","Days","Report status actions detailed","Responsible","Responsible name","Leader","Due date"];
-  // 对齐配置：A居中 B居中 C左对齐 D居中 E居中 F居中 G左对齐 H居中 I居中 J居中 K居中
   const aligns = ["center","center","left","center","center","center","left","center","center","center","center"];
 
   const rows = ORD.map(o => [
@@ -422,14 +406,12 @@ function expX(){
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.aoa_to_sheet([hd, ...rows]);
 
-  // 设置列宽
   ws['!cols'] = [
     {wch:12},{wch:20},{wch:50},{wch:8},
     {wch:14},{wch:7},{wch:55},{wch:16},
     {wch:40},{wch:24},{wch:12}
   ];
 
-  // 设置字体、对齐、边框
   const ref = XLSX.utils.decode_range(ws['!ref']);
   for(let R=ref.s.r; R<=ref.e.r; R++){
     for(let C=ref.s.c; C<=ref.e.c; C++){
@@ -445,7 +427,6 @@ function expX(){
           right: {style:'thin', color:{auto:1}}
         }
       };
-      // 表头行蓝色背景 + 白色字
       if(R === 0){
         cell.s.fill = { fgColor: { rgb: "B4C6E7" } };
         cell.s.font = { name: 'Arial', sz: 10, bold: true };
@@ -453,9 +434,6 @@ function expX(){
       }
     }
   }
-
-  // 数字格式：日期列 A=0, E=4, K=10 设置为 MM-DD-YY
-  // 但实际上我们已经把日期格式化为文本了，所以不需要特殊数字格式
 
   XLSX.utils.book_append_sheet(wb, ws, "Late Report");
   const fn = `Late_Report_Filled_${(RD||"unknown").replace(/-/g,"")}.xlsx`;
@@ -467,7 +445,7 @@ function expX(){
 function esc(s){ return String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 function escJ(s){ return String(s??"").replace(/\\/g,"\\\\").replace(/'/g,"\\'"); }
 function dC(d){ return d>=7?"orange":d>=3?"yellow":"white"; }
-function dB(d){ const m={orange:"do",yellow:"dy",white:"dw"}; const c={do:"days-orange",dy:"days-yellow",dw:"days-white"}; return `<span class="days-badge ${c[m[dC(d)]]}">${d}</span>`; }
+function dB(d){ const map={orange:"days-orange",yellow:"days-yellow",white:"days-white"}; return `<span class="days-badge ${map[dC(d)]}">${d}</span>`; }
 
 function rOff(){
   const s=document.getElementById("filterOffice");
@@ -484,6 +462,18 @@ function rT(data){
   if(!data.length){ tb.innerHTML=`<tr><td colspan="12" style="text-align:center;padding:40px;color:#888;">No matches.</td></tr>`; uS(); return; }
   tb.innerHTML=data.map((o,i)=>{
     const io=ISOTH(o.reason); const ce=io&&!(o.comment||"").trim(); const fl=isFilled(o);
+    const r=effResp(o); const itl=itlpmInfo(o.office,r);
+    let itlHtml;
+    if(!r) itlHtml='<span class="cell-dash">—</span>';
+    else if(itl.m==="man"){ const ie=!(o.itlpm||"").trim(); itlHtml=`<input class="itlpm-inp ${ie?"error":""}" type="text" value="${esc(o.itlpm||"")}" placeholder="Enter name..." oninput="uF('${escJ(o.ref)}','itlpm',this.value)"><div class="field-warning ${ie?"show":""}">⚠️ Required</div>`; }
+    else if(itl.m==="na") itlHtml='<span class="cell-na">N/A</span>';
+    else if(itl.m==="aut") itlHtml=`<span class="cell-readonly">${esc(itl.v||"—")}</span>`;
+    else itlHtml='<span class="cell-dash">—</span>';
+    
+    let respHtml;
+    if(io){ const re=io&&!(o.responsible||"").trim(); respHtml=`<select class="responsible-sel ${re?"error":""}" onchange="uResp('${escJ(o.ref)}',this.value)">${ROPTS.map(op=>`<option value="${esc(op)}" ${o.responsible===op?"selected":""}>${esc(op||"— Select —")}</option>`).join("")}</select><div class="field-warning ${re?"show":""}">⚠️ Required</div>`; }
+    else respHtml=`<span class="cell-readonly">${esc(autoResp(o.reason)||"—")}</span>`;
+
     return `<tr class="${fl?"filled":""}" data-ref="${esc(o.ref)}">
       <td>${i+1}</td>
       <td style="font-family:monospace;font-size:11.5px">${esc(o.ref)}</td>
@@ -492,10 +482,10 @@ function rT(data){
       <td>${dB(o.days)}</td>
       <td style="max-width:160px;font-size:11px;color:#555" title="${esc(o.insp)}">${esc(o.insp)||"-"}</td>
       <td style="font-size:11.5px">${esc(o.office)}</td>
-      <td class="td-itlpm">${bIC(o)}</td>
+      <td class="td-itlpm">${itlHtml}</td>
       <td><select class="reason-sel" onchange="uReason('${escJ(o.ref)}',this.value)">${ROPT.map(r=>`<option value="${esc(r)}" ${o.reason===r?"selected":""}>${esc(r||"— Select —")}</option>`).join("")}</select></td>
       <td><input class="comment-inp ${ce?"error":""}" type="text" value="${esc(o.comment)}" placeholder="${io?"Required":"Optional..."}" oninput="uF('${escJ(o.ref)}','comment',this.value)"><div class="field-warning ${ce?"show":""}">⚠️ Required</div></td>
-      <td class="td-resp">${bRC(o)}</td>
+      <td class="td-resp">${respHtml}</td>
       <td style="text-align:center" class="td-status"><span class="status-dot ${fl?"dot-filled":"dot-pending"}"></span><span style="font-size:11px">${fl?"Filled":"Pending"}</span></td>
     </tr>`;
   }).join("");
@@ -507,8 +497,20 @@ function rR(rf){
   const tr=document.querySelector(`tr[data-ref="${CSS.escape(rf)}"]`); if(!tr) return;
   const fl=isFilled(o); const io=ISOTH(o.reason);
   fl?tr.classList.add("filled"):tr.classList.remove("filled");
-  tr.querySelector(".td-itlpm").innerHTML=bIC(o);
-  tr.querySelector(".td-resp").innerHTML=bRC(o);
+  const r=effResp(o); const itl=itlpmInfo(o.office,r);
+  let itlHtml;
+  if(!r) itlHtml='<span class="cell-dash">—</span>';
+  else if(itl.m==="man"){ const ie=!(o.itlpm||"").trim(); itlHtml=`<input class="itlpm-inp ${ie?"error":""}" type="text" value="${esc(o.itlpm||"")}" placeholder="Enter name..." oninput="uF('${escJ(o.ref)}','itlpm',this.value)"><div class="field-warning ${ie?"show":""}">⚠️ Required</div>`; }
+  else if(itl.m==="na") itlHtml='<span class="cell-na">N/A</span>';
+  else if(itl.m==="aut") itlHtml=`<span class="cell-readonly">${esc(itl.v||"—")}</span>`;
+  else itlHtml='<span class="cell-dash">—</span>';
+  tr.querySelector(".td-itlpm").innerHTML=itlHtml;
+  
+  let respHtml;
+  if(io){ const re=io&&!(o.responsible||"").trim(); respHtml=`<select class="responsible-sel ${re?"error":""}" onchange="uResp('${escJ(o.ref)}',this.value)">${ROPTS.map(op=>`<option value="${esc(op)}" ${o.responsible===op?"selected":""}>${esc(op||"— Select —")}</option>`).join("")}</select><div class="field-warning ${re?"show":""}">⚠️ Required</div>`; }
+  else respHtml=`<span class="cell-readonly">${esc(autoResp(o.reason)||"—")}</span>`;
+  tr.querySelector(".td-resp").innerHTML=respHtml;
+  
   const ci=tr.querySelector(".comment-inp");
   if(ci){ const ce=io&&!(o.comment||"").trim(); ci.classList.toggle("error",ce); ci.placeholder=io?"Required":"Optional..."; const cw=ci.nextElementSibling; if(cw) cw.classList.toggle("show",ce); }
   const st=tr.querySelector(".td-status");
@@ -531,14 +533,8 @@ function uF(rf,f,v){
   const tr=document.querySelector(`tr[data-ref="${CSS.escape(rf)}"]`); if(!tr) return;
   const fl=isFilled(o); const io=ISOTH(o.reason);
   fl?tr.classList.add("filled"):tr.classList.remove("filled");
-  if(f==="comment"){
-    const inp=tr.querySelector(".comment-inp");
-    if(inp&&io){ const ce=!(o.comment||"").trim(); inp.classList.toggle("error",ce); const w=inp.nextElementSibling; if(w) w.classList.toggle("show",ce); }
-  }
-  if(f==="itlpm"){
-    const inp=tr.querySelector(".itlpm-inp");
-    if(inp){ const ie=!(o.itlpm||"").trim(); inp.classList.toggle("error",ie); const w=inp.nextElementSibling; if(w) w.classList.toggle("show",ie); }
-  }
+  if(f==="comment"){ const inp=tr.querySelector(".comment-inp"); if(inp&&io){ const ce=!(o.comment||"").trim(); inp.classList.toggle("error",ce); const w=inp.nextElementSibling; if(w) w.classList.toggle("show",ce); } }
+  if(f==="itlpm"){ const inp=tr.querySelector(".itlpm-inp"); if(inp){ const ie=!(o.itlpm||"").trim(); inp.classList.toggle("error",ie); const w=inp.nextElementSibling; if(w) w.classList.toggle("show",ie); } }
   const st=tr.querySelector(".td-status");
   if(st) st.innerHTML=`<span class="status-dot ${fl?"dot-filled":"dot-pending"}"></span><span style="font-size:11px">${fl?"Filled":"Pending"}</span>`;
   uS();
