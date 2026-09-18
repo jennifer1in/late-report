@@ -356,9 +356,9 @@ function bO(rs){
     ref:     String(fC(r,["QIMA Ref.","QIMA Ref"])).trim(),
     client:  String(fC(r,["Client name","Client Name"])).trim(),
     reports: String(fC(r,["Reports","reports"])).trim(),
-    lastDay: fD(fC(r,["Last Day Of Inspection","Last Day"])),
+    lastDay: fD(fC(r,["Last Day Of Inspection","Last Day","Last Day Of Inspection"])),
     days:    parseInt(fC(r,["Days","days"]),10)||0,
-    insp:    String(fC(r,["Responsible name","Responsible Name","Inspector","Inspectors"])).trim(),
+    insp:    String(fC(r,["Responsible name","Responsible Name","Inspector","Inspectors","Inspector(s)","Inspector (s)"])).trim(),
     office:  String(fC(r,["Leader","leader","Office","office"])).trim(),
     reason:"",comment:"",responsible:"",itlpm:""
   }));
@@ -400,13 +400,13 @@ function exportToExcel(){
     o.ref,
     o.client,
     o.reports||"",
-    fmtMMDDYY(o.lastDay),
+    o.lastDay,
     o.days,
     sDetail(o),
     effResp(o),
     rName(o),
     ldr(o),
-    fmtMMDDYY(RD)
+    RD
   ]);
 
   const wb = XLSX.utils.book_new();
@@ -414,21 +414,14 @@ function exportToExcel(){
 
   ws['!cols'] = [
     {wch:6},{wch:14},{wch:20},{wch:50},{wch:8},
-    {wch:14},{wch:7},{wch:55},{wch:16},
-    {wch:40},{wch:24},{wch:12}
+    {wch:16},{wch:7},{wch:55},{wch:16},{wch:40},{wch:24},{wch:12}
   ];
 
-  // 将数字序号转为文本
   const ref = XLSX.utils.decode_range(ws['!ref']);
   for(let R=ref.s.r; R<=ref.e.r; R++){
     for(let C=ref.s.c; C<=ref.e.c; C++){
       const cell = ws[XLSX.utils.encode_cell({r:R,c:C})];
       if(!cell) continue;
-      // 将数值转为文本防止自动格式化
-      if(typeof cell.v === 'number' && R > 0) {
-        cell.t = 's';
-        cell.v = String(cell.v);
-      }
       cell.s = {
         font: { name: 'Arial', sz: 10 },
         alignment: { horizontal: aligns[C], vertical: 'center', wrapText: true },
