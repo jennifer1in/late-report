@@ -4,21 +4,38 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>QIMA MEX PEO — Late Report ITL Form</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
-  :root { --qima-blue: #003087; --orange: #FFC000; --yellow: #FFFF00; --border: #d0d7e3; --red: #dc3545; }
+  :root {
+    --qima-blue: #003087;
+    --orange: #FFC000;
+    --yellow: #FFFF00;
+    --border: #d0d7e3;
+    --red: #dc3545;
+  }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: Arial, sans-serif; font-size: 13px; background: #eef1f7; color: #222; }
-  header { background: var(--qima-blue); color: #fff; padding: 16px 32px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  header {
+    background: var(--qima-blue); color: #fff; padding: 16px 32px;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  }
   header .logo { font-size: 22px; font-weight: 700; letter-spacing: 2px; }
   header .title { font-size: 15px; opacity: .85; }
   header .date-badge { background: rgba(255,255,255,.15); border-radius: 6px; padding: 4px 12px; font-size: 12px; }
   .upload-btn-wrap { position: relative; }
-  .upload-btn { display: flex; align-items: center; gap: 7px; background: #fff; color: var(--qima-blue); border: none; border-radius: 6px; padding: 7px 16px; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+  .upload-btn {
+    display: flex; align-items: center; gap: 7px;
+    background: #fff; color: var(--qima-blue); border: none; border-radius: 6px;
+    padding: 7px 16px; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap;
+  }
   .upload-btn:hover { background: #e8eef7; }
   .upload-btn input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
   .upload-status { font-size: 11.5px; opacity: .85; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .export-btn { display: flex; align-items: center; gap: 7px; background: #28a745; color: #fff; border: none; border-radius: 6px; padding: 7px 16px; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+  .export-btn {
+    display: flex; align-items: center; gap: 7px;
+    background: #28a745; color: #fff; border: none; border-radius: 6px;
+    padding: 7px 16px; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap;
+  }
   .export-btn:hover { background: #218838; }
   .export-btn:disabled { background: #6c757d; cursor: not-allowed; opacity: .6; }
   .sync-badge { display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,.15); border-radius: 6px; padding: 4px 12px; font-size: 12px; margin-left: auto; }
@@ -31,6 +48,7 @@
   .instructions b { color: var(--qima-blue); }
   .filter-bar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
   .filter-bar select, .filter-bar input { border: 1px solid var(--border); border-radius: 5px; padding: 5px 10px; font-size: 12px; background: #fff; }
+  .filter-bar label { font-size: 12px; color: #555; }
   .btn { padding: 7px 18px; border-radius: 5px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; transition: opacity .15s; }
   .btn:hover { opacity: .85; }
   .btn-primary { background: var(--qima-blue); color: #fff; }
@@ -41,7 +59,8 @@
   .progress-label { font-size: 11.5px; color: #666; margin-bottom: 6px; }
   table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 6px rgba(0,0,0,.08); }
   th { background: var(--qima-blue); color: #fff; padding: 9px 10px; text-align: left; font-size: 12px; white-space: nowrap; position: sticky; top: 0; z-index: 10; }
-  td { padding: 7px 10px; border-bottom: 1px solid #edf0f5; }
+  td { padding: 7px 10px; border-bottom: 1px solid #edf0f5; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
   tr:hover td { background: #f0f4fc; }
   tr.filled td { background: #f0fff4 !important; }
   .days-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-weight: 700; font-size: 12px; }
@@ -51,7 +70,12 @@
   .status-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; }
   .dot-pending { background: #bbb; }
   .dot-filled { background: #28a745; }
-  select.reason-sel, input.comment-inp, select.responsible-sel, input.itlpm-inp { width: 100%; border: 1px solid var(--border); border-radius: 4px; padding: 4px 7px; font-size: 12px; background: #fff; }
+  select.reason-sel, input.comment-inp, select.responsible-sel, input.itlpm-inp {
+    width: 100%; border: 1px solid var(--border); border-radius: 4px; padding: 4px 7px; font-size: 12px; background: #fff;
+  }
+  select.reason-sel:focus, input.comment-inp:focus, select.responsible-sel:focus, input.itlpm-inp:focus {
+    outline: 2px solid var(--qima-blue); border-color: transparent;
+  }
   .cell-readonly { display: block; width: 100%; border: 1px solid var(--border); border-radius: 4px; padding: 4px 7px; font-size: 12px; background: #f3f5f8; color: #444; font-weight: 600; }
   .cell-na { display: block; padding: 4px 7px; font-size: 12px; color: #999; font-style: italic; text-align: center; }
   .cell-dash { color: #bbb; font-style: italic; font-size: 12px; }
@@ -60,20 +84,35 @@
   input.itlpm-inp.error { border-color: var(--red) !important; background: #fff5f5; }
   .field-warning { font-size: 10.5px; color: var(--red); margin-top: 3px; display: none; }
   .field-warning.show { display: block; }
-  .summary-panel { position: fixed; bottom: 0; left: 0; right: 0; background: var(--qima-blue); color: #fff; padding: 12px 32px; display: flex; align-items: center; gap: 20px; z-index: 100; }
+  .summary-panel { position: fixed; bottom: 0; left: 0; right: 0; background: var(--qima-blue); color: #fff; padding: 12px 32px; display: flex; align-items: center; gap: 20px; box-shadow: 0 -4px 16px rgba(0,0,0,.15); z-index: 100; }
   .summary-panel .stat { text-align: center; }
   .summary-panel .stat .num { font-size: 22px; font-weight: 700; }
   .summary-panel .stat .lbl { font-size: 11px; opacity: .75; }
   .summary-panel .actions { margin-left: auto; display: flex; gap: 10px; }
   .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 200; align-items: center; justify-content: center; }
   .modal-overlay.open { display: flex; }
-  .modal { background: #fff; border-radius: 10px; padding: 28px 32px; max-width: 820px; width: 95%; max-height: 85vh; overflow-y: auto; }
+  .modal { background: #fff; border-radius: 10px; padding: 28px 32px; max-width: 820px; width: 95%; max-height: 85vh; overflow-y: auto; box-shadow: 0 8px 40px rgba(0,0,0,.2); }
+  .modal h3 { color: var(--qima-blue); margin-bottom: 16px; font-size: 16px; }
   .email-preview { background: #f7f9fc; border: 1px solid var(--border); border-radius: 6px; padding: 14px; font-size: 12px; white-space: pre-wrap; line-height: 1.6; max-height: 340px; overflow-y: auto; font-family: 'Courier New', monospace; }
-  .copied-toast { position: fixed; top: 80px; left: 50%; transform: translateX(-50%); background: #28a745; color: #fff; padding: 10px 24px; border-radius: 20px; font-size: 13px; display: none; z-index: 300; font-weight: 600; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 18px; justify-content: flex-end; }
+  .copied-toast { position: fixed; top: 80px; left: 50%; transform: translateX(-50%); background: #28a745; color: #fff; padding: 10px 24px; border-radius: 20px; font-size: 13px; display: none; z-index: 300; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,.2); }
   .empty-state { text-align: center; padding: 60px 20px; color: #888; }
-  .date-modal { background: #fff; border-radius: 10px; padding: 24px 28px; max-width: 380px; width: 95%; }
+  .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+  .empty-state p { font-size: 14px; line-height: 1.8; }
+  .empty-state b { color: var(--qima-blue); }
+  .hint { font-size: 11px; color: #777; margin-top: 8px; }
+  .date-modal { background: #fff; border-radius: 10px; padding: 24px 28px; max-width: 380px; width: 95%; box-shadow: 0 8px 40px rgba(0,0,0,.2); }
+  .date-modal h3 { color: var(--qima-blue); margin-bottom: 12px; font-size: 15px; }
   .date-modal input[type="date"] { width: 100%; border: 1.5px solid var(--border); border-radius: 6px; padding: 8px 12px; font-size: 14px; margin: 8px 0 16px; }
-  @media (max-width: 768px) { .container { padding: 0 8px; } .filter-bar { flex-direction: column; align-items: stretch; } th, td { font-size: 11px; padding: 5px 7px; } .summary-panel { flex-wrap: wrap; padding: 10px 16px; } .summary-panel .actions { margin-left: 0; width: 100%; } header { padding: 12px 16px; } }
+  .date-modal input[type="date"]:focus { outline: 2px solid var(--qima-blue); border-color: transparent; }
+  @media (max-width: 768px) {
+    .container { padding: 0 8px; }
+    .filter-bar { flex-direction: column; align-items: stretch; }
+    th, td { font-size: 11px; padding: 5px 7px; }
+    .summary-panel { flex-wrap: wrap; padding: 10px 16px; }
+    .summary-panel .actions { margin-left: 0; width: 100%; }
+    header { padding: 12px 16px; }
+  }
 </style>
 </head>
 <body>
@@ -81,132 +120,482 @@
   <div class="logo">QIMA</div>
   <div class="title">MEX PEO Service — Late Report Update Form</div>
   <div class="date-badge" id="headerDate">No file loaded</div>
-  <div class="upload-btn-wrap"><button class="upload-btn">📂 Upload Late Report<input type="file" accept=".xlsx,.xls,.csv" onchange="handleFileUpload(event)"></button></div>
+  <div class="upload-btn-wrap">
+    <button class="upload-btn">
+      📂 Upload Late Report
+      <input type="file" accept=".xlsx,.xls,.csv" onchange="handleFileUpload(event)">
+    </button>
+  </div>
   <span class="upload-status" id="uploadStatus"></span>
-  <button class="export-btn" id="exportBtn" onclick="expX()" disabled>⬇️ Export Today's Data</button>
-  <div class="sync-badge"><div class="sync-dot" id="syncDot"></div><span id="syncLabel">Connecting...</span></div>
+  <button class="export-btn" id="exportBtn" onclick="exportToExcel()" disabled>
+    ⬇️ Export Today's Data
+  </button>
+  <div class="sync-badge">
+    <div class="sync-dot" id="syncDot"></div>
+    <span id="syncLabel">Connecting...</span>
+  </div>
 </header>
+
 <div class="container">
-  <div class="instructions"><b>使用方法：</b>上传文件自动同步。选 <b>Other</b> 时 Comment + Responsible 必填。PM/AM 时 ITL/PM 需手动填写。完成后点击导出。</div>
+  <div class="instructions">
+    <b>使用方法：</b>上传文件后自动同步。选 <b>Other</b> 时 Comment + Responsible 必填。PM/AM 时 ITL/PM 需手动填写。填写完成后点击 <b>⬇️ Export Today's Data</b> 导出。
+    <br>
+    <b>Instructions:</b> Upload file → Fill in → Click <b>⬇️ Export Today's Data</b>.
+  </div>
   <div class="filter-bar">
+    <label>筛选:</label>
     <select id="filterOffice" onchange="applyFilters()"><option value="">All Offices</option></select>
-    <select id="filterResponsible" onchange="applyFilters()"><option value="">All Responsible</option><option value="PM">PM</option><option value="AM">AM</option><option value="Inspector">Inspector</option><option value="PM/Inspector">PM/Inspector</option><option value="AM/Inspector">AM/Inspector</option><option value="IT">IT</option></select>
-    <select id="filterStatus" onchange="applyFilters()"><option value="">All Status</option><option value="pending">Pending</option><option value="filled">Filled</option></select>
-    <select id="filterDays" onchange="applyFilters()"><option value="">All Days</option><option value="orange">≥7d</option><option value="yellow">3-6d</option><option value="white">0-2d</option></select>
+    <select id="filterResponsible" onchange="applyFilters()">
+      <option value="">All Responsible</option>
+      <option value="PM">PM</option><option value="AM">AM</option><option value="Inspector">Inspector</option>
+      <option value="PM/Inspector">PM/Inspector</option><option value="AM/Inspector">AM/Inspector</option><option value="IT">IT</option>
+    </select>
+    <select id="filterStatus" onchange="applyFilters()">
+      <option value="">All Status</option><option value="pending">Pending</option><option value="filled">Filled</option>
+    </select>
+    <select id="filterDays" onchange="applyFilters()">
+      <option value="">All Days</option><option value="orange">≥7 days</option><option value="yellow">3-6 days</option><option value="white">0-2 days</option>
+    </select>
     <input type="text" id="searchBox" placeholder="Search..." oninput="applyFilters()" style="min-width:150px">
   </div>
-  <div class="progress-label" id="progressLabel">0 / 0 filled</div>
+  <div class="progress-label" id="progressLabel">0 / 0 orders filled</div>
   <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
-  <div style="overflow-x:auto;margin-bottom:90px;">
-    <table><thead><tr><th style="width:28px">#</th><th>QIMA Ref.</th><th>Client</th><th>Last Day</th><th>Days</th><th>Inspector(s)</th><th>Office</th><th style="min-width:140px">ITL/PM</th><th style="min-width:300px">Reason</th><th style="min-width:200px">Comment</th><th style="min-width:160px">Responsible</th><th style="width:80px">Status</th></tr></thead>
-      <tbody id="tableBody"><tr><td colspan="12"><div class="empty-state"><div class="icon">📂</div><p>No data loaded yet.</p></div></td></tr></tbody>
+  <div style="overflow-x:auto; margin-bottom:90px;">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:28px">#</th>
+          <th>QIMA Ref.</th><th>Client</th><th>Last Day</th><th>Days</th>
+          <th>Inspector(s)</th><th>Office</th><th style="min-width:140px">ITL/PM</th>
+          <th style="min-width:300px">原因 / Reason <span style="font-weight:300;font-size:10px">(required)</span></th>
+          <th style="min-width:200px">备注 / Comment</th>
+          <th style="min-width:160px">责任方 / Responsible</th><th style="width:80px">Status</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody">
+        <tr><td colspan="12"><div class="empty-state"><div class="icon">📂</div><p>No data loaded yet.<br>Click <b>📂 Upload Late Report</b> to upload your file.</p></div></td></tr>
+      </tbody>
     </table>
   </div>
 </div>
+
 <div class="summary-panel">
   <div class="stat"><div class="num" id="statTotal">0</div><div class="lbl">Total</div></div>
   <div class="stat"><div class="num" id="statFilled">0</div><div class="lbl">Filled</div></div>
   <div class="stat"><div class="num" id="statPending">0</div><div class="lbl">Pending</div></div>
   <div class="stat"><div class="num" id="statOrange" style="color:#FFC000">0</div><div class="lbl">≥7 Days</div></div>
-  <div class="actions"><button class="btn btn-outline" onclick="openSubmitModal()">Email</button></div>
+  <div class="actions">
+    <button class="btn btn-outline" onclick="openSubmitModal()">✉️ Email</button>
+  </div>
 </div>
+
 <div class="modal-overlay" id="dateModal">
-  <div class="date-modal"><h3>📅 Confirm Due Date</h3><p style="font-size:12px;color:#666;">请确认 Due Date：</p><input type="date" id="dateInput"><div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end"><button class="btn btn-outline" onclick="cancelUpload()">Cancel</button><button class="btn btn-primary" onclick="confirmDate()">✅ Confirm</button></div></div>
+  <div class="date-modal">
+    <h3>📅 Confirm Due Date</h3>
+    <p style="font-size:12px;color:#666;margin-bottom:4px">请确认这份 Late Report 的 Due Date：</p>
+    <input type="date" id="dateInput">
+    <p class="hint">💡 Due date 将用于导出的 K 列</p>
+    <div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end">
+      <button class="btn btn-outline" onclick="cancelUpload()">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmDate()">✅ Confirm</button>
+    </div>
+  </div>
 </div>
+
 <div class="modal-overlay" id="submitModal">
-  <div class="modal"><h3>📧 Draft Email</h3><div class="email-preview" id="emailPreview"></div><div class="modal-actions"><button class="btn btn-outline" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="copyEmail()">📋 Copy</button></div></div>
+  <div class="modal">
+    <h3>📧 Draft Email</h3>
+    <div class="email-preview" id="emailPreview"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="copyEmail()">📋 Copy</button>
+    </div>
+  </div>
 </div>
 <div class="copied-toast" id="copiedToast">✓ Copied!</div>
+
 <script>
-const BIN_ID="6a7428c7f5f4af5e29f18dc7",BIN_KEY="$2a$10$S9d2QQ.6vlQYZvNo4h61K.AEnTyPMTkCXNIgG1M0UrkJBL2XcqhCq";
-const API=`https://api.jsonbin.io/v3/b/${BIN_ID}`;
-const HDR_RD={"X-Master-Key":BIN_KEY};
-const HDR_WR={"Content-Type":"application/json","X-Master-Key":BIN_KEY,"X-Bin-Versioning":"false"};
-const POLL_MS=5000;
-const ROPT=["","waiting for IP update to re-submit the report / 等待IP 更新后重新提交报告","waiting for final PL / 等待最终装箱单","Waiting for final PL and booking update","Waiting for booking update","Waiting for seal picture","The container still not loding yet","The order will be cancelled","Waiting for AM to update booking","Waiting for AM to confirm","the booking was updated today","the final PL received this morning","the pictures were provided","one report was not submitted","will finish today/tomorrow","too many report","The inspector OT yesterday","Other / 其他"];
-const RAUTO={"waiting for IP update to re-submit the report / 等待IP 更新后重新提交报告":"PM","waiting for final PL / 等待最终装箱单":"PM","Waiting for final PL and booking update":"PM","Waiting for booking update":"PM","Waiting for seal picture":"PM","The container still not loding yet":"PM","The order will be cancelled":"PM","Waiting for AM to update booking":"AM","Waiting for AM to confirm":"AM","the booking was updated today":"Inspector","the final PL received this morning":"Inspector","the pictures were provided":"Inspector","one report was not submitted":"Inspector","will finish today/tomorrow":"Inspector","too many report":"Inspector","The inspector OT yesterday":"Inspector"};
-const ROPTS=["","PM","AM","Inspector","PM/Inspector","AM/Inspector","IT"],RAITL=["Inspector","PM/Inspector","AM/Inspector"],RMITL=["PM","AM"],RNITL=["IT"];
-const OITL={"shenzhen office":"Jason Lee","guangzhou office":"Jason Lee","hongkong office":"Jason Lee","hong kong office":"Jason Lee","qingdao office":"Jason Lee","beijing office":"Jason Lee","tianjin office":"Jason Lee","tianjing office":"Jason Lee","anhui office":"Jason Lee","shanghai office":"Joe Cai","xiamen office":"Nina Wu","taiwan office":"Nina Wu","nanjing office":"Jason/Joe","ningbo office":"Nina Wu & John Shen","hangzhou office":"Nina Wu & John Shen"};
-const ISOTH=r=>r==="Other / 其他";
-let ORD=[],flt=[],RD="",pt=null,sv=false,lh="",dt=null,it=false,pfd=null,pfn="";
+// ── Config ────────────────────────────────────────────────────
+const BIN_ID  = "6a7428c7f5f4af5e29f18dc7";
+const BIN_KEY = "$2a$10$S9d2QQ.6vlQYZvNo4h61K.AEnTyPMTkCXNIgG1M0UrkJBL2XcqhCq";
+const API     = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
+const HDR_RD  = { "X-Master-Key": BIN_KEY };
+const HDR_WR  = { "Content-Type":"application/json", "X-Master-Key":BIN_KEY, "X-Bin-Versioning":"false" };
+const POLL_MS = 5000;
 
-function autoResp(r){return RAUTO[r]||""}
-function itlpmInfo(off,resp){if(!resp)return{m:"n",v:""};if(RMITL.includes(resp))return{m:"man",v:""};if(RNITL.includes(resp))return{m:"na",v:"N/A"};if(RAITL.includes(resp))return{m:"aut",v:OITL[(off||"").toLowerCase().trim()]||""};return{m:"n",v:""}}
-function isFilled(o){if(!(o.reason||"").trim())return false;const r=ISOTH(o.reason)?(o.responsible||""):autoResp(o.reason);if(ISOTH(o.reason)){if(!(o.comment||"").trim())return false;if(!r)return false}if(RMITL.includes(r)&&!(o.itlpm||"").trim())return false;return true}
-function effResp(o){return ISOTH(o.reason)?(o.responsible||""):autoResp(o.reason)}
-function sDetail(o){return ISOTH(o.reason)?(o.comment||""):(o.reason||"")}
-function rName(o){const r=effResp(o);if(RAITL.includes(r))return o.inspectors||"";if(RMITL.includes(r))return o.itlpm||"";return""}
-function ldr(o){const r=effResp(o);if(r==="PM")return"Vicky/Emily";if(r==="AM")return"Thalia/Emilio/Diana";if(RAITL.includes(r)){const it=itlpmInfo(o.office,r);return it.m==="aut"?(it.v||""):(o.itlpm||"")}return""}
-function esc(s){return String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
-function escJ(s){return String(s??"").replace(/\\/g,"\\\\").replace(/'/g,"\\'")}
-function sUI(s,l){document.getElementById("syncDot").className="sync-dot"+(s==="s"?" syncing":s==="e"?" error":"");document.getElementById("syncLabel").textContent=l}
-function showT(m){const t=document.getElementById("copiedToast");t.textContent=m;t.style.display="block";setTimeout(()=>t.style.display="none",2500)}
-function hsh(o){return JSON.stringify(o.map(x=>x.ref+x.reason+x.comment+x.responsible+x.itlpm))}
-function dC(d){return d>=7?"orange":d>=3?"yellow":"white"}
-function dB(d){const map={orange:"days-orange",yellow:"days-yellow",white:"days-white"};return'<span class="days-badge '+map[dC(d)]+'">'+d+'</span>'}
+const ROPT = ["","waiting for IP update to re-submit the report / 等待IP 更新后重新提交报告","waiting for final PL / 等待最终装箱单","Waiting for final PL and booking update / 等待最终装箱单和 booking更新","Waiting for booking update / 等待 booking更新","Waiting for seal picture, need support from PM / 等待封条照片，需要 PM 协助","The container still not loding yet, pls change the last day of inspection / 集装箱还未开始装货，请更改最终验货日期","The order will be cancelled, pls change the status / 订单将被取消，请更改状态","Waiting for AM to update booking / 等待 AM更新 booking 信息","Waiting for AM to confirm how to submit the report / 等待AM确认如何提交报告","the booking was updated today, will finish tomorrow / booking信息今天已更新,将于明天完成","the final PL received this morning, will finish tomorrow / 今天上午已收到最终装箱单，将于明天完成","the pictures were provided by supplier today, will finish today / 供应商今天已提供照片，今天完成","one report was not submitted successfully, will submit again today / 有一份报告未能成功提交，今天会重新提交","will finish today/tomorrow / 今天/明天完成","too many report, will finish tomorrow / 报告太多，将于明天完成","The inspector OT yesterday, will finsh today / 验货员昨天加班了，今天完成","Other / 其他"];
+const RAUTO = {"waiting for IP update to re-submit the report / 等待IP 更新后重新提交报告":"PM","waiting for final PL / 等待最终装箱单":"PM","Waiting for final PL and booking update / 等待最终装箱单和 booking更新":"PM","Waiting for booking update / 等待 booking更新":"PM","Waiting for seal picture, need support from PM / 等待封条照片，需要 PM 协助":"PM","The container still not loding yet, pls change the last day of inspection / 集装箱还未开始装货，请更改最终验货日期":"PM","The order will be cancelled, pls change the status / 订单将被取消，请更改状态":"PM","Waiting for AM to update booking / 等待 AM更新 booking 信息":"AM","Waiting for AM to confirm how to submit the report / 等待AM确认如何提交报告":"AM","the booking was updated today, will finish tomorrow / booking信息今天已更新,将于明天完成":"Inspector","the final PL received this morning, will finish tomorrow / 今天上午已收到最终装箱单，将于明天完成":"Inspector","the pictures were provided by supplier today, will finish today / 供应商今天已提供照片，今天完成":"Inspector","one report was not submitted successfully, will submit again today / 有一份报告未能成功提交，今天会重新提交":"Inspector","will finish today/tomorrow / 今天/明天完成":"Inspector","too many report, will finish tomorrow / 报告太多，将于明天完成":"Inspector","The inspector OT yesterday, will finsh today / 验货员昨天加班了，今天完成":"Inspector"};
+const ROPTS = ["","PM","AM","Inspector","PM/Inspector","AM/Inspector","IT"];
+const RAITL = ["Inspector","PM/Inspector","AM/Inspector"];
+const RMITL = ["PM","AM"];
+const RNITL = ["IT"];
+const OITL  = {"shenzhen office":"Jason Lee","guangzhou office":"Jason Lee","hongkong office":"Jason Lee","hong kong office":"Jason Lee","qingdao office":"Jason Lee","beijing office":"Jason Lee","tianjin office":"Jason Lee","tianjing office":"Jason Lee","anhui office":"Jason Lee","shanghai office":"Joe Cai","xiamen office":"Nina Wu","taiwan office":"Nina Wu","nanjing office":"Jason/Joe","ningbo office":"Nina Wu & John Shen","hangzhou office":"Nina Wu & John Shen"};
+const ISOTH = r => r === "Other / 其他";
 
-function fD(v){
-  if(!v)return"";
-  if(v instanceof Date){return String(v.getDate()).padStart(2,"0")+"-"+v.toLocaleString("en-US",{month:"short"})+"-"+String(v.getFullYear()).slice(-2)}
-  const s=String(v).trim(),mm=s.match(/^(\d{2})-(\d{2})-(\d{2})$/);
-  if(mm){const M=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];return mm[2]+"-"+M[parseInt(mm[1],10)-1]+"-"+mm[3]}
-  return s
+function autoResp(r){ return RAUTO[r]||""; }
+function itlpmInfo(off,resp){
+  if(!resp) return {m:"n",v:""};
+  if(RMITL.includes(resp)) return {m:"man",v:""};
+  if(RNITL.includes(resp)) return {m:"na",v:"N/A"};
+  if(RAITL.includes(resp)) return {m:"aut",v:OITL[(off||"").toLowerCase().trim()]||""};
+  return {m:"n",v:""};
 }
+function isFilled(o){
+  if(!(o.reason||"").trim()) return false;
+  const r=ISOTH(o.reason)?(o.responsible||""):autoResp(o.reason);
+  if(ISOTH(o.reason)){ if(!(o.comment||"").trim()) return false; if(!r) return false; }
+  if(RMITL.includes(r)&&!(o.itlpm||"").trim()) return false;
+  return true;
+}
+function effResp(o){ return ISOTH(o.reason)?(o.responsible||""):autoResp(o.reason); }
+function sDetail(o){ return ISOTH(o.reason)?(o.comment||""):(o.reason||""); }
+function rName(o){
+  const r=effResp(o);
+  if(RAITL.includes(r)) return o.inspectors||"";
+  if(RMITL.includes(r)) return o.itlpm||"";
+  return "";
+}
+function ldr(o){
+  const r=effResp(o);
+  if(r==="PM") return "Vicky/Emily";
+  if(r==="AM") return "Thalia/Emilio/Diana";
+  if(RAITL.includes(r)){ const it=itlpmInfo(o.office,r); return it.m==="aut"?(it.v||""):(o.itlpm||""); }
+  return "";
+}
+
+function bIC(o){
+  const r=effResp(o); const it=itlpmInfo(o.office,r);
+  if(!r) return '<span class="cell-dash">—</span>';
+  if(it.m==="man"){
+    const ie=!(o.itlpm||"").trim();
+    return `<input class="itlpm-inp ${ie?"error":""}" type="text" value="${esc(o.itlpm||"")}" placeholder="Enter name..." oninput="uF('${escJ(o.ref)}','itlpm',this.value)"><div class="field-warning ${ie?"show":""}">⚠️ Required</div>`;
+  }
+  if(it.m==="na")  return '<span class="cell-na">N/A</span>';
+  if(it.m==="aut") return `<span class="cell-readonly">${esc(it.v||"—")}</span>`;
+  return '<span class="cell-dash">—</span>';
+}
+function bRC(o){
+  const io=ISOTH(o.reason);
+  const re=io&&!(o.responsible||"").trim();
+  if(io) return `<select class="responsible-sel ${re?"error":""}" onchange="uResp('${escJ(o.ref)}',this.value)">${ROPTS.map(op=>`<option value="${esc(op)}" ${o.responsible===op?"selected":""}>${esc(op||"— Select —")}</option>`).join("")}</select><div class="field-warning ${re?"show":""}">⚠️ Required</div>`;
+  return `<span class="cell-readonly">${esc(autoResp(o.reason)||"—")}</span>`;
+}
+
+// ── State ─────────────────────────────────────────────────────
+let ORD=[], flt=[], RD="", pt=null, sv=false, lh="", dt=null, it=false, pfd=null, pfn="";
+
+function sUI(s,l){
+  document.getElementById("syncDot").className="sync-dot"+(s==="s"?" syncing":s==="e"?" error":"");
+  document.getElementById("syncLabel").textContent=l;
+}
+function hsh(o){ return JSON.stringify(o.map(x=>x.ref+x.reason+x.comment+x.responsible+x.itlpm)); }
+
+async function saveC(){
+  if(sv) return; sv=true; sUI("s","🟡 Saving...");
+  try{
+    const b=JSON.stringify({reportDate:RD,fileName:document.getElementById("uploadStatus").textContent.replace("📄 ",""),orders:ORD});
+    const r=await fetch(API,{method:"PUT",headers:HDR_WR,body:b});
+    if(!r.ok) throw Error(r.status);
+    lh=hsh(ORD); sUI("o","🟢 Saved ✓");
+  }catch(e){ sUI("e","🔴 Save failed"); console.error(e); }
+  finally{ sv=false; }
+}
+
+async function pollC(){
+  if(it){ sUI("o","🟢 Synced"); return; }
+  try{
+    const r=await fetch(API+"/latest",{headers:HDR_RD}); if(!r.ok) throw Error(r.status);
+    const j=await r.json(); const rc=j.record||{};
+    if(!rc.orders||!rc.orders.length){ sUI("o","🟢 Connected"); return; }
+    const rh=hsh(rc.orders);
+    if(rh===lh){ sUI("o","🟢 Synced"); return; }
+    lh=rh;
+    if(ORD.length===0){
+      ORD=rc.orders; RD=rc.reportDate||"";
+      document.getElementById("headerDate").textContent=RD||"—";
+      document.getElementById("uploadStatus").textContent=rc.fileName?`📄 ${rc.fileName}`:"";
+      flt=[...ORD]; rOff(); document.getElementById("exportBtn").disabled=false;
+    } else {
+      rc.orders.forEach(co=>{ const lo=ORD.find(o=>o.ref===co.ref); if(lo){ lo.reason=co.reason||""; lo.comment=co.comment||""; lo.responsible=co.responsible||""; lo.itlpm=co.itlpm||""; }});
+    }
+    applyF(); sUI("o","🟢 Synced");
+  }catch(e){ sUI("e","🔴 Sync error"); console.error(e); }
+}
+
+function hFU(evt){
+  const f=evt.target.files[0]; if(!f) return;
+  pfn=f.name; const nm=f.name.match(/(\d{4})(\d{2})(\d{2})/);
+  const gd=nm?`${nm[1]}-${nm[2]}-${nm[3]}`:new Date().toISOString().slice(0,10);
+  document.getElementById("dateInput").value=gd;
+  document.getElementById("dateModal").classList.add("open");
+  const ext=f.name.split(".").pop().toLowerCase();
+  const rd=new FileReader();
+  if(ext==="csv"){ rd.onload=e=>{ pfd={t:"csv",d:e.target.result}; }; rd.readAsText(f,"UTF-8"); }
+  else { rd.onload=e=>{ pfd={t:"xlsx",d:e.target.result}; }; rd.readAsArrayBuffer(f); }
+  evt.target.value="";
+}
+function canU(){ document.getElementById("dateModal").classList.remove("open"); pfd=null; pfn=""; }
+function confD(){
+  const dv=document.getElementById("dateInput").value;
+  if(!dv){ showT("⚠️ Select a date"); return; }
+  RD=dv; document.getElementById("dateModal").classList.remove("open");
+  document.getElementById("headerDate").textContent=RD;
+  document.getElementById("uploadStatus").textContent=`📄 ${pfn}`;
+  if(!pfd){ showT("⚠️ File not ready"); return; }
+  if(pfd.t==="csv") pCSV(pfd.d); else pXLSX(pfd.d);
+  pfd=null; pfn="";
+}
+function pXLSX(b){ try{ const wb=XLSX.read(b,{type:"array",cellDates:true}); bO(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:""})); }catch(e){ showT("✗ Failed"); } }
+function pCSV(t){
+  try{
+    const ls=t.trim().split("\n"); let hi=0;
+    for(let i=0;i<ls.length;i++){ if(ls[i].toLowerCase().includes("qima ref")){hi=i;break;} }
+    const hd=cL(ls[hi]).map(h=>h.trim()); const rows=[];
+    for(let i=hi+1;i<ls.length;i++){ if(!ls[i].trim()) continue; const v=cL(ls[i]); const o={}; hd.forEach((h,idx)=>{ o[h]=(v[idx]||"").trim(); }); rows.push(o); }
+    bO(rows);
+  }catch(e){ showT("✗ Failed"); }
+}
+function cL(l){ const r=[]; let c="",q=false; for(const ch of l){ if(ch==='"'){q=!q;} else if(ch===","&&!q){r.push(c);c="";} else{c+=ch;} } r.push(c); return r; }
+function fC(r,cd){ const ks=Object.keys(r); for(const c of cd){ const f=ks.find(k=>k.toLowerCase().trim()===c.toLowerCase().trim()); if(f!==undefined) return r[f]??""; } return ""; }
+function bO(rs){
+  const d=rs.filter(r=>String(fC(r,["QIMA Ref.","QIMA Ref"])).trim().startsWith("Q"));
+  if(!d.length){ showT("✗ No valid rows"); return; }
+  ORD=d.map(r=>({
+    insDate: String(fC(r,["Inspection date","Inspection Date"])).trim(),
+    ref:     String(fC(r,["QIMA Ref.","QIMA Ref"])).trim(),
+    client:  String(fC(r,["Client name","Client Name"])).trim(),
+    reports: String(fC(r,["Reports","reports"])).trim(),
+    lastDay: fD(fC(r,["Last Day Of Inspection","Last Day"])),
+    days:    parseInt(fC(r,["Days","days"]),10)||0,
+    insp:    String(fC(r,["Responsible name","Responsible Name","Inspector","Inspectors"])).trim(),
+    office:  String(fC(r,["Leader","leader","Office","office"])).trim(),
+    reason:"",comment:"",responsible:"",itlpm:""
+  }));
+  flt=[...ORD]; rOff(); applyF(); saveC(); document.getElementById("exportBtn").disabled=false;
+  showT(`✅ Loaded ${ORD.length} orders`);
+}
+function fD(v){
+  if(!v) return "";
+  if(v instanceof Date){ return `${String(v.getDate()).padStart(2,"0")}-${v.toLocaleString("en-US",{month:"short"})}-${String(v.getFullYear()).slice(-2)}`; }
+  const s=String(v).trim(), mm=s.match(/^(\d{2})-(\d{2})-(\d{2})$/);
+  if(mm){ const M=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]; return `${mm[2]}-${M[parseInt(mm[1],10)-1]}-${mm[3]}`; }
+  return s;
+}
+
 function fmtMMDDYY(d){
-  if(!d)return"";
+  if(!d) return "";
   const s=String(d).trim();
   const m=s.match(/^(\d{2})-(\w{3})-(\d{2})$/);
-  if(m){const MS={"Jan":"01","Feb":"02","Mar":"03","Apr":"04","May":"05","Jun":"06","Jul":"07","Aug":"08","Sep":"09","Oct":"10","Nov":"11","Dec":"12"};return(MS[m[2]]||"01")+"-"+m[1]+"-"+m[3]}
+  if(m){
+    const MS={"Jan":"01","Feb":"02","Mar":"03","Apr":"04","May":"05","Jun":"06","Jul":"07","Aug":"08","Sep":"09","Oct":"10","Nov":"11","Dec":"12"};
+    const mo=MS[m[2]]||"01";
+    return `${mo[0]==='0'?mo:mo.padStart(2,'0')}-${m[1]}-${m[3]}`;
+  }
+  // yyyy-mm-dd -> mm-dd-yy
   const y=s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if(y)return y[2]+"-"+y[3]+"-"+y[1].slice(-2);
-  return s
+  if(y) return `${y[2]}-${y[3]}-${y[1].slice(-2)}`;
+  return s;
 }
 
-function handleFileUpload(evt){
-  const f=evt.target.files[0];if(!f)return;pfn=f.name;const nm=f.name.match(/(\d{4})(\d{2})(\d{2})/);
-  const gd=nm?nm[1]+"-"+nm[2]+"-"+nm[3]:new Date().toISOString().slice(0,10);
-  document.getElementById("dateInput").value=gd;document.getElementById("dateModal").classList.add("open");
-  const ext=f.name.split(".").pop().toLowerCase(),rd=new FileReader();
-  if(ext==="csv"){rd.onload=e=>{pfd={t:"csv",d:e.target.result}};rd.readAsText(f,"UTF-8")}
-  else{rd.onload=e=>{pfd={t:"xlsx",d:e.target.result}};rd.readAsArrayBuffer(f)}
-  evt.target.value=""
-}
-function cancelUpload(){document.getElementById("dateModal").classList.remove("open");pfd=null;pfn=""}
-function confirmDate(){const dv=document.getElementById("dateInput").value;if(!dv){showT("Select a date");return}RD=dv;document.getElementById("dateModal").classList.remove("open");document.getElementById("headerDate").textContent=RD;document.getElementById("uploadStatus").textContent="📄 "+pfn;if(!pfd){showT("File not ready");return}if(pfd.t==="csv")pCSV(pfd.d);else pXLSX(pfd.d);pfd=null;pfn=""}
-function pXLSX(b){try{const wb=XLSX.read(b,{type:"array",cellDates:true});bO(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:""}))}catch(e){showT("Failed")}}
-function pCSV(t){try{const ls=t.trim().split("\n");let hi=0;for(let i=0;i<ls.length;i++){if(ls[i].toLowerCase().includes("qima ref")){hi=i;break}}const hd=cL(ls[hi]).map(h=>h.trim()),rows=[];for(let i=hi+1;i<ls.length;i++){if(!ls[i].trim())continue;const v=cL(ls[i]),o={};hd.forEach((h,idx)=>{o[h]=(v[idx]||"").trim()});rows.push(o)}bO(rows)}catch(e){showT("Failed")}}
-function cL(l){const r=[];let c="",q=false;for(const ch of l){if(ch==='"'){q=!q}else if(ch===","&&!q){r.push(c);c=""}else{c+=ch}}r.push(c);return r}
-function fC(r,cd){const ks=Object.keys(r);for(const c of cd){const f=ks.find(k=>k.toLowerCase().trim()===c.toLowerCase().trim());if(f!==undefined)return r[f]??""}return""}
-function bO(rs){const d=rs.filter(r=>String(fC(r,["QIMA Ref.","QIMA Ref"])).trim().startsWith("Q"));if(!d.length){showT("No valid rows");return}ORD=d.map(r=>({insDate:String(fC(r,["Inspection date","Inspection Date"])).trim(),ref:String(fC(r,["QIMA Ref.","QIMA Ref"])).trim(),client:String(fC(r,["Client name","Client Name"])).trim(),reports:String(fC(r,["Reports","reports"])).trim(),lastDay:fD(fC(r,["Last Day Of Inspection","Last Day"])),days:parseInt(fC(r,["Days","days"]),10)||0,insp:String(fC(r,["Responsible name","Responsible Name","Inspector","Inspectors"])).trim(),office:String(fC(r,["Leader","leader","Office","office"])).trim(),reason:"",comment:"",responsible:"",itlpm:""}));flt=[...ORD];rOff();applyF();saveC();document.getElementById("exportBtn").disabled=false;showT("Loaded "+ORD.length+" orders")}
-
+// ── Export ────────────────────────────────────────────────────
 function expX(){
-  if(!ORD.length){showT("No data");return}
-  const hd=["Inspection date","QIMA Ref.","Client name","Reports","Last Day Of Inspection","Days","Report status actions detailed","Responsible","Responsible name","Leader","Due date"];
-  const aligns=["center","center","left","center","center","center","left","center","center","center","center"];
-  const rows=ORD.map(o=>[fmtMMDDYY(o.insDate),o.ref,o.client,o.reports||"",fmtMMDDYY(o.lastDay),o.days,sDetail(o),effResp(o),rName(o),ldr(o),fmtMMDDYY(RD)]);
-  const wb=XLSX.utils.book_new(),ws=XLSX.utils.aoa_to_sheet([hd,...rows]);
-  ws['!cols']=[{wch:12},{wch:20},{wch:50},{wch:8},{wch:14},{wch:7},{wch:55},{wch:16},{wch:40},{wch:24},{wch:12}];
-  const ref=XLSX.utils.decode_range(ws['!ref']);
-  for(let R=ref.s.r;R<=ref.e.r;R++){for(let C=ref.s.c;C<=ref.e.c;C++){const cell=ws[XLSX.utils.encode_cell({r:R,c:C})];if(!cell)continue;cell.s={font:{name:'Arial',sz:10},alignment:{horizontal:aligns[C],vertical:'center',wrapText:true},border:{top:{style:'thin',color:{auto:1}},bottom:{style:'thin',color:{auto:1}},left:{style:'thin',color:{auto:1}},right:{style:'thin',color:{auto:1}}}};if(R===0){cell.s.fill={fgColor:{rgb:"B4C6E7"}};cell.s.font={name:'Arial',sz:10,bold:true};cell.s.alignment={horizontal:'center',vertical:'center',wrapText:true}}}}
-  XLSX.utils.book_append_sheet(wb,ws,"Late Report");const fn="Late_Report_Filled_"+(RD||"unknown").replace(/-/g,"")+".xlsx";XLSX.writeFile(wb,fn);showT("Exported!")
+  if(!ORD.length){ showT("⚠️ No data"); return; }
+
+  const hd = ["Inspection date","QIMA Ref.","Client name","Reports","Last Day Of Inspection","Days","Report status actions detailed","Responsible","Responsible name","Leader","Due date"];
+  // 对齐配置：A居中 B居中 C左对齐 D居中 E居中 F居中 G左对齐 H居中 I居中 J居中 K居中
+  const aligns = ["center","center","left","center","center","center","left","center","center","center","center"];
+
+  const rows = ORD.map(o => [
+    fmtMMDDYY(o.insDate),
+    o.ref,
+    o.client,
+    o.reports||"",
+    fmtMMDDYY(o.lastDay),
+    o.days,
+    sDetail(o),
+    effResp(o),
+    rName(o),
+    ldr(o),
+    fmtMMDDYY(RD)
+  ]);
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet([hd, ...rows]);
+
+  // 设置列宽
+  ws['!cols'] = [
+    {wch:12},{wch:20},{wch:50},{wch:8},
+    {wch:14},{wch:7},{wch:55},{wch:16},
+    {wch:40},{wch:24},{wch:12}
+  ];
+
+  // 设置字体、对齐、边框
+  const ref = XLSX.utils.decode_range(ws['!ref']);
+  for(let R=ref.s.r; R<=ref.e.r; R++){
+    for(let C=ref.s.c; C<=ref.e.c; C++){
+      const cell = ws[XLSX.utils.encode_cell({r:R,c:C})];
+      if(!cell) continue;
+      cell.s = {
+        font: { name: 'Arial', sz: 10 },
+        alignment: { horizontal: aligns[C], vertical: 'center', wrapText: true },
+        border: {
+          top: {style:'thin', color:{auto:1}},
+          bottom: {style:'thin', color:{auto:1}},
+          left: {style:'thin', color:{auto:1}},
+          right: {style:'thin', color:{auto:1}}
+        }
+      };
+      // 表头行蓝色背景 + 白色字
+      if(R === 0){
+        cell.s.fill = { fgColor: { rgb: "B4C6E7" } };
+        cell.s.font = { name: 'Arial', sz: 10, bold: true };
+        cell.s.alignment = { horizontal: 'center', vertical: 'center', wrapText: true };
+      }
+    }
+  }
+
+  // 数字格式：日期列 A=0, E=4, K=10 设置为 MM-DD-YY
+  // 但实际上我们已经把日期格式化为文本了，所以不需要特殊数字格式
+
+  XLSX.utils.book_append_sheet(wb, ws, "Late Report");
+  const fn = `Late_Report_Filled_${(RD||"unknown").replace(/-/g,"")}.xlsx`;
+  XLSX.writeFile(wb, fn);
+  showT(`✅ Exported: ${fn}`);
 }
 
-function rOff(){const s=document.getElementById("filterOffice"),os=[...new Set(ORD.map(o=>(o.office||"").trim()).filter(Boolean))].sort();s.innerHTML='<option value="">All Offices</option>'+os.map(o=>'<option value="'+esc(o)+'">'+esc(o)+'</option>').join("")}
-function rT(data){const tb=document.getElementById("tableBody");if(!ORD.length){tb.innerHTML='<tr><td colspan="12"><div class="empty-state"><div class="icon">📂</div><p>No data loaded yet.</p></div></td></tr>';uS();return}if(!data.length){tb.innerHTML='<tr><td colspan="12" style="text-align:center;padding:40px;color:#888;">No matches.</td></tr>';uS();return}tb.innerHTML=data.map((o,i)=>{const io=ISOTH(o.reason),ce=io&&!(o.comment||"").trim(),fl=isFilled(o);return'<tr class="'+(fl?"filled":"")+'" data-ref="'+esc(o.ref)+'"><td>'+(i+1)+'</td><td style="font-family:monospace;font-size:11.5px">'+esc(o.ref)+'</td><td style="max-width:190px;font-size:12px" title="'+esc(o.client)+'">'+esc(o.client)+'</td><td style="font-size:12px">'+esc(o.lastDay)+'</td><td>'+dB(o.days)+'</td><td style="max-width:160px;font-size:11px;color:#555" title="'+esc(o.insp)+'">'+(o.insp||"-")+'</td><td style="font-size:11.5px">'+esc(o.office)+'</td><td class="td-itlpm">'+(function(){const r=effResp(o),it=itlpmInfo(o.office,r);if(!r)return'<span class="cell-dash">—</span>';if(it.m==="man"){const ie=!(o.itlpm||"").trim();return'<input class="itlpm-inp '+(ie?"error":"")+'" type="text" value="'+esc(o.itlpm||"")+'" placeholder="Enter name..." oninput="uF(\''+escJ(o.ref)+"','itlpm',this.value)\"><div class=\"field-warning "+(ie?"show":"")+'\">Required</div>'}if(it.m==="na")return'<span class="cell-na">N/A</span>';if(it.m==="aut")return'<span class="cell-readonly">'+esc(it.v||"—")+'</span>';return'<span class="cell-dash">—</span>'})()+'</td><td><select class="reason-sel" onchange="uReason(\''+escJ(o.ref)+"',this.value)\">"+ROPT.map(r=>'<option value="'+esc(r)+'" '+(o.reason===r?"selected":"")+'>'+esc(r||"— Select —")+"</option>").join("")+'</select></td><td><input class="comment-inp '+(ce?"error":"")+'" type="text" value="'+esc(o.comment)+'" placeholder="'+(io?"Required":"Optional")+'" oninput="uF(\''+escJ(o.ref)+"','comment',this.value)\"><div class=\"field-warning "+(ce?"show":"")+'\">Required</div></td><td class="td-resp">'+(function(){const io=ISOTH(o.reason);if(io){const re=io&&!(o.responsible||"").trim();return'<select class="responsible-sel '+(re?"error":"")+'" onchange="uResp(\''+escJ(o.ref)+"',this.value)\">"+ROPTS.map(op=>'<option value="'+esc(op)+'" '+(o.responsible===op?"selected":"")+'>'+esc(op||"— Select —")+"</option>").join("")+'</select><div class="field-warning '+(re?"show":"")+'\">Required</div>'}return'<span class="cell-readonly">'+esc(autoResp(o.reason)||"—")+"</span>"})()+'</td><td style="text-align:center"><span class="status-dot '+(fl?"dot-filled":"dot-pending")+'"></span><span style="font-size:11px">'+(fl?"Filled":"Pending")+"</span></td></tr>"}).join("");uS()}
-function rR(rf){const o=ORD.find(x=>x.ref===rf);if(!o)return;const tr=document.querySelector('tr[data-ref="'+CSS.escape(rf)+'"]');if(!tr)return;const fl=isFilled(o),io=ISOTH(o.reason);fl?tr.classList.add("filled"):tr.classList.remove("filled");const st=tr.querySelector(".status-dot+span");if(st)st.textContent=fl?"Filled":"Pending";uS()}
-function uReason(rf,v){const o=ORD.find(x=>x.ref===rf);if(!o)return;o.reason=v;o.responsible=ISOTH(v)?"":autoResp(v);o.itlpm="";rR(rf);saveC()}
-function uResp(rf,v){const o=ORD.find(x=>x.ref===rf);if(!o)return;o.responsible=v;o.itlpm="";rR(rf);saveC()}
-function uF(rf,f,v){const o=ORD.find(x=>x.ref===rf);if(!o)return;o[f]=v;it=true;const tr=document.querySelector('tr[data-ref="'+CSS.escape(rf)+'"]');if(!tr)return;const fl=isFilled(o),io=ISOTH(o.reason);fl?tr.classList.add("filled"):tr.classList.remove("filled");if(f==="comment"){const inp=tr.querySelector(".comment-inp");if(inp&&io){const ce=!(o.comment||"").trim();inp.classList.toggle("error",ce);const w=inp.nextElementSibling;if(w)w.classList.toggle("show",ce)}}if(f==="itlpm"){const inp=tr.querySelector(".itlpm-inp");if(inp){const ie=!(o.itlpm||"").trim();inp.classList.toggle("error",ie);const w=inp.nextElementSibling;if(w)w.classList.toggle("show",ie)}}const st=tr.querySelector(".status-dot+span");if(st)st.textContent=fl?"Filled":"Pending";uS();clearTimeout(dt);dt=setTimeout(()=>{it=false;saveC()},2000)}
-function applyF(){const of=document.getElementById("filterOffice").value.trim().toLowerCase(),rs=document.getElementById("filterResponsible").value.trim(),st=document.getElementById("filterStatus").value.trim().toLowerCase(),df=document.getElementById("filterDays").value.trim().toLowerCase(),kw=document.getElementById("searchBox").value.trim().toLowerCase();flt=ORD.filter(o=>{const om=!of||(o.office||"").toLowerCase()===of,rm=!rs||effResp(o)===rs,sm=!st||(st==="filled"?isFilled(o):!isFilled(o)),dm=!df||(df==="orange"?o.days>=7:df==="yellow"?o.days>=3&&o.days<=6:o.days<=2),km=!kw||(o.ref+" "+o.client+" "+o.insp+" "+o.office).toLowerCase().includes(kw);return om&&rm&&sm&&dm&&km});rT(flt)}
-function uS(){const t=ORD.length,f=ORD.filter(isFilled).length;document.getElementById("statTotal").textContent=t;document.getElementById("statFilled").textContent=f;document.getElementById("statPending").textContent=t-f;document.getElementById("statOrange").textContent=ORD.filter(o=>o.days>=7).length;document.getElementById("progressLabel").textContent=f+"/"+t+" filled";document.getElementById("progressFill").style.width=t?f/t*100+"%":"0%"}
-function genE(){const r=ORD.filter(isFilled);if(!r.length)return"No filled orders yet.";let t="Subject: Late Report Update - "+RD+"\n\nDear Team,\n\n";r.forEach((o,i)=>{const er=ISOTH(o.reason)?o.responsible:autoResp(o.reason),it=itlpmInfo(o.office,er),pm=it.m==="man"?(o.itlpm||"-"):(it.v||"-");t+=(i+1)+". "+o.ref+"\n   Client: "+o.client+"\n   Last Day: "+o.lastDay+"\n   Days: "+o.days+"\n   Insp: "+(o.insp||"-")+"\n   Office: "+(o.office||"-")+"\n   ITL/PM: "+pm+"\n   Reason: "+(o.reason||"-")+"\n   Comment: "+(o.comment||"-")+"\n   Responsible: "+(er||"-")+"\n\n"});return t+"Best regards,\nITL"}
-function openSubmitModal(){if(!ORD.length){showT("Upload first");return}document.getElementById("emailPreview").textContent=genE();document.getElementById("submitModal").classList.add("open")}
-function closeModal(){document.getElementById("submitModal").classList.remove("open")}
-function copyEmail(){navigator.clipboard.writeText(document.getElementById("emailPreview").textContent).then(()=>showT("Copied!")).catch(()=>showT("Failed"))}
-async function saveC(){if(sv)return;sv=true;sUI("s","Saving...");try{const b=JSON.stringify({reportDate:RD,fileName:document.getElementById("uploadStatus").textContent.replace("📄 ",""),orders:ORD});const r=await fetch(API,{method:"PUT",headers:HDR_WR,body:b});if(!r.ok)throw Error(r.status);lh=hsh(ORD);sUI("o","Saved ✓")}catch(e){sUI("e","Save failed")}finally{sv=false}}
-async function pollC(){if(it){sUI("o","Synced");return}try{const r=await fetch(API+"/latest",{headers:HDR_RD});if(!r.ok)throw Error(r.status);const j=await r.json(),rc=j.record||{};if(!rc.orders||!rc.orders.length){sUI("o","Connected");return}const rh=hsh(rc.orders);if(rh===lh){sUI("o","Synced");return}lh=rh;if(ORD.length===0){ORD=rc.orders;RD=rc.reportDate||"";document.getElementById("headerDate").textContent=RD||"—";document.getElementById("uploadStatus").textContent=rc.fileName?"📄 "+rc.fileName:"";flt=[...ORD];rOff();document.getElementById("exportBtn").disabled=false}else{rc.orders.forEach(co=>{const lo=ORD.find(o=>o.ref===co.ref);if(lo){lo.reason=co.reason||"";lo.comment=co.comment||"";lo.responsible=co.responsible||"";lo.itlpm=co.itlpm||""}})}applyF();sUI("o","Synced")}catch(e){sUI("e","Sync error")}}
-window.onclick=e=>{if(e.target===document.getElementById("submitModal"))closeModal();if(e.target===document.getElementById("dateModal"))cancelUpload()};
-sUI("s","Connecting...");pollC();pt=setInterval(pollC,POLL_MS);
+// ── Render ────────────────────────────────────────────────────
+function esc(s){ return String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+function escJ(s){ return String(s??"").replace(/\\/g,"\\\\").replace(/'/g,"\\'"); }
+function dC(d){ return d>=7?"orange":d>=3?"yellow":"white"; }
+function dB(d){ const m={orange:"do",yellow:"dy",white:"dw"}; const c={do:"days-orange",dy:"days-yellow",dw:"days-white"}; return `<span class="days-badge ${c[m[dC(d)]]}">${d}</span>`; }
+
+function rOff(){
+  const s=document.getElementById("filterOffice");
+  const os=[...new Set(ORD.map(o=>(o.office||"").trim()).filter(Boolean))].sort();
+  s.innerHTML=`<option value="">All Offices</option>`+os.map(o=>`<option value="${esc(o)}">${esc(o)}</option>`).join("");
+}
+
+function rT(data){
+  const tb=document.getElementById("tableBody");
+  if(!ORD.length){
+    tb.innerHTML=`<tr><td colspan="12"><div class="empty-state"><div class="icon">📂</div><p>No data loaded yet.<br>Click <b>📂 Upload Late Report</b> to upload your file.</p></div></td></tr>`;
+    uS(); return;
+  }
+  if(!data.length){ tb.innerHTML=`<tr><td colspan="12" style="text-align:center;padding:40px;color:#888;">No matches.</td></tr>`; uS(); return; }
+  tb.innerHTML=data.map((o,i)=>{
+    const io=ISOTH(o.reason); const ce=io&&!(o.comment||"").trim(); const fl=isFilled(o);
+    return `<tr class="${fl?"filled":""}" data-ref="${esc(o.ref)}">
+      <td>${i+1}</td>
+      <td style="font-family:monospace;font-size:11.5px">${esc(o.ref)}</td>
+      <td style="max-width:190px;font-size:12px" title="${esc(o.client)}">${esc(o.client)}</td>
+      <td style="font-size:12px">${esc(o.lastDay)}</td>
+      <td>${dB(o.days)}</td>
+      <td style="max-width:160px;font-size:11px;color:#555" title="${esc(o.insp)}">${esc(o.insp)||"-"}</td>
+      <td style="font-size:11.5px">${esc(o.office)}</td>
+      <td class="td-itlpm">${bIC(o)}</td>
+      <td><select class="reason-sel" onchange="uReason('${escJ(o.ref)}',this.value)">${ROPT.map(r=>`<option value="${esc(r)}" ${o.reason===r?"selected":""}>${esc(r||"— Select —")}</option>`).join("")}</select></td>
+      <td><input class="comment-inp ${ce?"error":""}" type="text" value="${esc(o.comment)}" placeholder="${io?"Required":"Optional..."}" oninput="uF('${escJ(o.ref)}','comment',this.value)"><div class="field-warning ${ce?"show":""}">⚠️ Required</div></td>
+      <td class="td-resp">${bRC(o)}</td>
+      <td style="text-align:center" class="td-status"><span class="status-dot ${fl?"dot-filled":"dot-pending"}"></span><span style="font-size:11px">${fl?"Filled":"Pending"}</span></td>
+    </tr>`;
+  }).join("");
+  uS();
+}
+
+function rR(rf){
+  const o=ORD.find(x=>x.ref===rf); if(!o) return;
+  const tr=document.querySelector(`tr[data-ref="${CSS.escape(rf)}"]`); if(!tr) return;
+  const fl=isFilled(o); const io=ISOTH(o.reason);
+  fl?tr.classList.add("filled"):tr.classList.remove("filled");
+  tr.querySelector(".td-itlpm").innerHTML=bIC(o);
+  tr.querySelector(".td-resp").innerHTML=bRC(o);
+  const ci=tr.querySelector(".comment-inp");
+  if(ci){ const ce=io&&!(o.comment||"").trim(); ci.classList.toggle("error",ce); ci.placeholder=io?"Required":"Optional..."; const cw=ci.nextElementSibling; if(cw) cw.classList.toggle("show",ce); }
+  const st=tr.querySelector(".td-status");
+  if(st) st.innerHTML=`<span class="status-dot ${fl?"dot-filled":"dot-pending"}"></span><span style="font-size:11px">${fl?"Filled":"Pending"}</span>`;
+  uS();
+}
+
+function uReason(rf,v){
+  const o=ORD.find(x=>x.ref===rf); if(!o) return;
+  o.reason=v; o.responsible=ISOTH(v)?"":autoResp(v); o.itlpm="";
+  rR(rf); saveC();
+}
+function uResp(rf,v){
+  const o=ORD.find(x=>x.ref===rf); if(!o) return;
+  o.responsible=v; o.itlpm=""; rR(rf); saveC();
+}
+function uF(rf,f,v){
+  const o=ORD.find(x=>x.ref===rf); if(!o) return;
+  o[f]=v; it=true;
+  const tr=document.querySelector(`tr[data-ref="${CSS.escape(rf)}"]`); if(!tr) return;
+  const fl=isFilled(o); const io=ISOTH(o.reason);
+  fl?tr.classList.add("filled"):tr.classList.remove("filled");
+  if(f==="comment"){
+    const inp=tr.querySelector(".comment-inp");
+    if(inp&&io){ const ce=!(o.comment||"").trim(); inp.classList.toggle("error",ce); const w=inp.nextElementSibling; if(w) w.classList.toggle("show",ce); }
+  }
+  if(f==="itlpm"){
+    const inp=tr.querySelector(".itlpm-inp");
+    if(inp){ const ie=!(o.itlpm||"").trim(); inp.classList.toggle("error",ie); const w=inp.nextElementSibling; if(w) w.classList.toggle("show",ie); }
+  }
+  const st=tr.querySelector(".td-status");
+  if(st) st.innerHTML=`<span class="status-dot ${fl?"dot-filled":"dot-pending"}"></span><span style="font-size:11px">${fl?"Filled":"Pending"}</span>`;
+  uS();
+  clearTimeout(dt);
+  dt=setTimeout(()=>{ it=false; saveC(); },2000);
+}
+
+function applyF(){
+  const of=document.getElementById("filterOffice").value.trim().toLowerCase();
+  const rs=document.getElementById("filterResponsible").value.trim();
+  const st=document.getElementById("filterStatus").value.trim().toLowerCase();
+  const df=document.getElementById("filterDays").value.trim().toLowerCase();
+  const kw=document.getElementById("searchBox").value.trim().toLowerCase();
+  flt=ORD.filter(o=>{
+    const om=!of||(o.office||"").toLowerCase()===of;
+    const rm=!rs||effResp(o)===rs;
+    const sm=!st||(st==="filled"?isFilled(o):!isFilled(o));
+    const dm=!df||dC(o.days)===df;
+    const km=!kw||`${o.ref} ${o.client} ${o.insp} ${o.office}`.toLowerCase().includes(kw);
+    return om&&rm&&sm&&dm&&km;
+  });
+  rT(flt);
+}
+function uS(){
+  const t=ORD.length, f=ORD.filter(isFilled).length;
+  document.getElementById("statTotal").textContent=t;
+  document.getElementById("statFilled").textContent=f;
+  document.getElementById("statPending").textContent=t-f;
+  document.getElementById("statOrange").textContent=ORD.filter(o=>o.days>=7).length;
+  document.getElementById("progressLabel").textContent=`${f} / ${t} filled`;
+  document.getElementById("progressFill").style.width=t?`${f/t*100}%`:"0%";
+}
+
+function genE(){
+  const r=ORD.filter(isFilled); if(!r.length) return "No filled orders yet.";
+  let t=`Subject: Late Report Update - ${RD}\n\nDear Team,\n\n`;
+  r.forEach((o,i)=>{
+    const er=ISOTH(o.reason)?o.responsible:autoResp(o.reason);
+    const it=itlpmInfo(o.office,er);
+    const pm=it.m==="man"?(o.itlpm||"-"):(it.v||"-");
+    t+=`${i+1}. ${o.ref}\n   Client: ${o.client}\n   Last Day: ${o.lastDay}\n   Days: ${o.days}\n   Insp: ${o.insp||"-"}\n   Office: ${o.office||"-"}\n   ITL/PM: ${pm}\n   Reason: ${o.reason||"-"}\n   Comment: ${o.comment||"-"}\n   Responsible: ${er||"-"}\n\n`;
+  });
+  return t+"Best regards,\nITL";
+}
+function oSM(){ if(!ORD.length){showT("⚠️ Upload first");return;} document.getElementById("emailPreview").textContent=genE(); document.getElementById("submitModal").classList.add("open"); }
+function cM(){ document.getElementById("submitModal").classList.remove("open"); }
+function cpy(){ navigator.clipboard.writeText(document.getElementById("emailPreview").textContent).then(()=>showT("✓ Copied!")).catch(()=>showT("✗ Failed")); }
+function showT(m){ const t=document.getElementById("copiedToast"); t.textContent=m; t.style.display="block"; setTimeout(()=>t.style.display="none",2500); }
+
+window.onclick=e=>{
+  if(e.target===document.getElementById("submitModal")) cM();
+  if(e.target===document.getElementById("dateModal")) canU();
+};
+
+sUI("s","🟡 Connecting...");
+pollC();
+pt=setInterval(pollC, POLL_MS);
 </script>
 </body>
 </html>
