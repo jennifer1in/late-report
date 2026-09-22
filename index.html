@@ -52,7 +52,6 @@
   .dot-pending { background: #bbb; }
   .dot-filled { background: #28a745; }
   select.reason-sel, input.comment-inp, select.responsible-sel, input.itlpm-inp { width: 100%; border: 1px solid var(--border); border-radius: 4px; padding: 4px 7px; font-size: 12px; background: #fff; }
-  select.reason-sel:focus, input.comment-inp:focus, select.responsible-sel:focus, input.itlpm-inp:focus { outline: 2px solid var(--qima-blue); border-color: transparent; }
   .cell-readonly { display: block; width: 100%; border: 1px solid var(--border); border-radius: 4px; padding: 4px 7px; font-size: 12px; background: #f3f5f8; color: #444; font-weight: 600; }
   .cell-na { display: block; padding: 4px 7px; font-size: 12px; color: #999; font-style: italic; text-align: center; }
   .cell-dash { color: #bbb; font-style: italic; font-size: 12px; }
@@ -68,21 +67,13 @@
   .summary-panel .actions { margin-left: auto; display: flex; gap: 10px; }
   .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 200; align-items: center; justify-content: center; }
   .modal-overlay.open { display: flex; }
-  .modal { background: #fff; border-radius: 10px; padding: 28px 32px; max-width: 820px; width: 95%; max-height: 85vh; overflow-y: auto; box-shadow: 0 8px 40px rgba(0,0,0,.2); }
+  .modal { background: #fff; border-radius: 10px; padding: 28px 32px; max-width: 820px; width: 95%; max-height: 85vh; overflow-y: auto; }
   .email-preview { background: #f7f9fc; border: 1px solid var(--border); border-radius: 6px; padding: 14px; font-size: 12px; white-space: pre-wrap; line-height: 1.6; max-height: 340px; overflow-y: auto; font-family: 'Courier New', monospace; }
-  .modal-actions { display: flex; gap: 10px; margin-top: 18px; justify-content: flex-end; }
   .copied-toast { position: fixed; top: 80px; left: 50%; transform: translateX(-50%); background: #28a745; color: #fff; padding: 10px 24px; border-radius: 20px; font-size: 13px; display: none; z-index: 300; font-weight: 600; }
   .empty-state { text-align: center; padding: 60px 20px; color: #888; }
   .date-modal { background: #fff; border-radius: 10px; padding: 24px 28px; max-width: 380px; width: 95%; }
   .date-modal input[type="date"] { width: 100%; border: 1.5px solid var(--border); border-radius: 6px; padding: 8px 12px; font-size: 14px; margin: 8px 0 16px; }
-  @media (max-width: 768px) {
-    .container { padding: 0 8px; }
-    .filter-bar { flex-direction: column; align-items: stretch; }
-    th, td { font-size: 11px; padding: 5px 7px; }
-    .summary-panel { flex-wrap: wrap; padding: 10px 16px; }
-    .summary-panel .actions { margin-left: 0; width: 100%; }
-    header { padding: 12px 16px; }
-  }
+  @media (max-width: 768px) { .container { padding: 0 8px; } .filter-bar { flex-direction: column; align-items: stretch; } th, td { font-size: 11px; padding: 5px 7px; } .summary-panel { flex-wrap: wrap; padding: 10px 16px; } .summary-panel .actions { margin-left: 0; width: 100%; } header { padding: 12px 16px; } }
 </style>
 </head>
 <body>
@@ -90,15 +81,13 @@
   <div class="logo">QIMA</div>
   <div class="title">MEX PEO Service — Late Report Update Form</div>
   <div class="date-badge" id="headerDate">No file loaded</div>
-  <div class="upload-btn-wrap">
-    <button class="upload-btn">📂 Upload Late Report<input type="file" accept=".xlsx,.xls,.csv" onchange="handleFileUpload(event)"></button>
-  </div>
+  <div class="upload-btn-wrap"><button class="upload-btn">📂 Upload Late Report<input type="file" accept=".xlsx,.xls,.csv" onchange="handleFileUpload(event)"></button></div>
   <span class="upload-status" id="uploadStatus"></span>
-  <button class="export-btn" id="exportBtn" onclick="exportData()" disabled>⬇️ Export Today's Data</button>
+  <button class="export-btn" id="exportBtn" onclick="expX()" disabled>⬇️ Export Today's Data</button>
   <div class="sync-badge"><div class="sync-dot" id="syncDot"></div><span id="syncLabel">Connecting...</span></div>
 </header>
 <div class="container">
-  <div class="instructions"><b>使用方法：</b>上传文件后自动同步。选 <b>Other</b> 时 Comment + Responsible 必填。PM/AM 时 ITL/PM 需手动填写。完成后点击导出。</div>
+  <div class="instructions"><b>使用方法：</b>上传文件自动同步。选 <b>Other</b> 时 Comment + Responsible 必填。PM/AM 时 ITL/PM 需手动填写。完成后点击导出。</div>
   <div class="filter-bar">
     <select id="filterOffice" onchange="applyFilters()"><option value="">All Offices</option></select>
     <select id="filterResponsible" onchange="applyFilters()"><option value="">All Responsible</option><option value="PM">PM</option><option value="AM">AM</option><option value="Inspector">Inspector</option><option value="PM/Inspector">PM/Inspector</option><option value="AM/Inspector">AM/Inspector</option><option value="IT">IT</option></select>
@@ -130,7 +119,9 @@
 <div class="copied-toast" id="copiedToast">✓ Copied!</div>
 <script>
 const BIN_ID="6a7428c7f5f4af5e29f18dc7",BIN_KEY="$2a$10$S9d2QQ.6vlQYZvNo4h61K.AEnTyPMTkCXNIgG1M0UrkJBL2XcqhCq";
-const API=`https://api.jsonbin.io/v3/b/${BIN_ID}`,HDR_RD={"X-Master-Key":BIN_KEY},HDR_WR={"Content-Type":"application/json","X-Master-Key":BIN_KEY,"X-Bin-Versioning":"false"};
+const API=`https://api.jsonbin.io/v3/b/${BIN_ID}`;
+const HDR_RD={"X-Master-Key":BIN_KEY};
+const HDR_WR={"Content-Type":"application/json","X-Master-Key":BIN_KEY,"X-Bin-Versioning":"false"};
 const POLL_MS=5000;
 const ROPT=["","waiting for IP update to re-submit the report / 等待IP 更新后重新提交报告","waiting for final PL / 等待最终装箱单","Waiting for final PL and booking update","Waiting for booking update","Waiting for seal picture","The container still not loding yet","The order will be cancelled","Waiting for AM to update booking","Waiting for AM to confirm","the booking was updated today","the final PL received this morning","the pictures were provided","one report was not submitted","will finish today/tomorrow","too many report","The inspector OT yesterday","Other / 其他"];
 const RAUTO={"waiting for IP update to re-submit the report / 等待IP 更新后重新提交报告":"PM","waiting for final PL / 等待最终装箱单":"PM","Waiting for final PL and booking update":"PM","Waiting for booking update":"PM","Waiting for seal picture":"PM","The container still not loding yet":"PM","The order will be cancelled":"PM","Waiting for AM to update booking":"AM","Waiting for AM to confirm":"AM","the booking was updated today":"Inspector","the final PL received this morning":"Inspector","the pictures were provided":"Inspector","one report was not submitted":"Inspector","will finish today/tomorrow":"Inspector","too many report":"Inspector","The inspector OT yesterday":"Inspector"};
@@ -154,7 +145,6 @@ function hsh(o){return JSON.stringify(o.map(x=>x.ref+x.reason+x.comment+x.respon
 function dC(d){return d>=7?"orange":d>=3?"yellow":"white"}
 function dB(d){const map={orange:"days-orange",yellow:"days-yellow",white:"days-white"};return'<span class="days-badge '+map[dC(d)]+'">'+d+'</span>'}
 
-// 日期格式化
 function fD(v){
   if(!v)return"";
   if(v instanceof Date){return String(v.getDate()).padStart(2,"0")+"-"+v.toLocaleString("en-US",{month:"short"})+"-"+String(v.getFullYear()).slice(-2)}
@@ -183,72 +173,22 @@ function handleFileUpload(evt){
 }
 function cancelUpload(){document.getElementById("dateModal").classList.remove("open");pfd=null;pfn=""}
 function confirmDate(){const dv=document.getElementById("dateInput").value;if(!dv){showT("Select a date");return}RD=dv;document.getElementById("dateModal").classList.remove("open");document.getElementById("headerDate").textContent=RD;document.getElementById("uploadStatus").textContent="📄 "+pfn;if(!pfd){showT("File not ready");return}if(pfd.t==="csv")pCSV(pfd.d);else pXLSX(pfd.d);pfd=null;pfn=""}
-function pXLSX(b){try{const wb=XLSX.read(b,{type:"array",cellDates:true});bO(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:""}))}catch(e){showT("Failed to parse XLSX")}}
-function pCSV(t){try{const ls=t.trim().split("\n");let hi=0;for(let i=0;i<ls.length;i++){if(ls[i].toLowerCase().includes("qima ref")){hi=i;break}}const hd=cL(ls[hi]).map(h=>h.trim()),rows=[];for(let i=hi+1;i<ls.length;i++){if(!ls[i].trim())continue;const v=cL(ls[i]),o={};hd.forEach((h,idx)=>{o[h]=(v[idx]||"").trim()});rows.push(o)}bO(rows)}catch(e){showT("Failed to parse CSV")}}
+function pXLSX(b){try{const wb=XLSX.read(b,{type:"array",cellDates:true});bO(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:""}))}catch(e){showT("Failed")}}
+function pCSV(t){try{const ls=t.trim().split("\n");let hi=0;for(let i=0;i<ls.length;i++){if(ls[i].toLowerCase().includes("qima ref")){hi=i;break}}const hd=cL(ls[hi]).map(h=>h.trim()),rows=[];for(let i=hi+1;i<ls.length;i++){if(!ls[i].trim())continue;const v=cL(ls[i]),o={};hd.forEach((h,idx)=>{o[h]=(v[idx]||"").trim()});rows.push(o)}bO(rows)}catch(e){showT("Failed")}}
 function cL(l){const r=[];let c="",q=false;for(const ch of l){if(ch==='"'){q=!q}else if(ch===","&&!q){r.push(c);c=""}else{c+=ch}}r.push(c);return r}
 function fC(r,cd){const ks=Object.keys(r);for(const c of cd){const f=ks.find(k=>k.toLowerCase().trim()===c.toLowerCase().trim());if(f!==undefined)return r[f]??""}return""}
-function bO(rs){const d=rs.filter(r=>String(fC(r,["QIMA Ref.","QIMA Ref"])).trim().startsWith("Q"));if(!d.length){showT("No valid rows");return}ORD=d.map(r=>({insDate:String(fC(r,["Inspection date","Inspection Date"])).trim(),ref:String(fC(r,["QIMA Ref.","QIMA Ref"])).trim(),client:String(fC(r,["Client name","Client Name"])).trim(),reports:String(fC(r,["Reports","reports"])).trim(),lastDay:fD(fC(r,["Last Day Of Inspection","Last Day"])),days:parseInt(fC(r,["Days","days"]),10)||0,insp:String(fC(r,["Responsible name","Responsible Name","Inspector","Inspectors"])).trim(),office:String(fC(r,["Leader","leader","Office","office"])).trim(),inspectors:String(fC(r,["Responsible name","Responsible Name","Inspector","Inspectors"])).trim(),reason:"",comment:"",responsible:"",itlpm:""}));flt=[...ORD];rOff();applyFilters();saveC();document.getElementById("exportBtn").disabled=false;showT("Loaded "+ORD.length+" orders")}
+function bO(rs){const d=rs.filter(r=>String(fC(r,["QIMA Ref.","QIMA Ref"])).trim().startsWith("Q"));if(!d.length){showT("No valid rows");return}ORD=d.map(r=>({insDate:String(fC(r,["Inspection date","Inspection Date"])).trim(),ref:String(fC(r,["QIMA Ref.","QIMA Ref"])).trim(),client:String(fC(r,["Client name","Client Name"])).trim(),reports:String(fC(r,["Reports","reports"])).trim(),lastDay:fD(fC(r,["Last Day Of Inspection","Last Day"])),days:parseInt(fC(r,["Days","days"]),10)||0,insp:String(fC(r,["Responsible name","Responsible Name","Inspector","Inspectors"])).trim(),office:String(fC(r,["Leader","leader","Office","office"])).trim(),reason:"",comment:"",responsible:"",itlpm:""}));flt=[...ORD];rOff();applyF();saveC();document.getElementById("exportBtn").disabled=false;showT("Loaded "+ORD.length+" orders")}
 
-// 修复的导出函数
-function exportData(){
-  try {
-    if(!ORD.length){showT("No data to export");return}
-    
-    const headers=["Inspection date","QIMA Ref.","Client name","Reports","Last Day Of Inspection","Days","Report status actions detailed","Responsible","Responsible name","Leader","Due date"];
-    const aligns=["center","center","left","center","center","center","left","center","center","center","center"];
-    
-    const rows=ORD.map(o=>[
-      fmtMMDDYY(o.insDate),
-      o.ref,
-      o.client,
-      o.reports||"",
-      fmtMMDDYY(o.lastDay),
-      o.days,
-      sDetail(o),
-      effResp(o),
-      rName(o),
-      ldr(o),
-      fmtMMDDYY(RD)
-    ]);
-    
-    const wb=XLSX.utils.book_new();
-    const ws=XLSX.utils.aoa_to_sheet([headers,...rows]);
-    
-    ws['!cols']=[{wch:12},{wch:20},{wch:50},{wch:8},{wch:14},{wch:7},{wch:55},{wch:16},{wch:40},{wch:24},{wch:12}];
-    
-    const ref=XLSX.utils.decode_range(ws['!ref']);
-    for(let R=ref.s.r;R<=ref.e.r;R++){
-      for(let C=ref.s.c;C<=ref.e.c;C++){
-        const cell=ws[XLSX.utils.encode_cell({r:R,c:C})];
-        if(!cell)continue;
-        
-        cell.s={
-          font:{name:'Arial',sz:10},
-          alignment:{horizontal:aligns[C]||'left',vertical:'center',wrapText:true},
-          border:{
-            top:{style:'thin',color:{auto:1}},
-            bottom:{style:'thin',color:{auto:1}},
-            left:{style:'thin',color:{auto:1}},
-            right:{style:'thin',color:{auto:1}}
-          }
-        };
-        
-        if(R===0){
-          cell.s.fill={fgColor:{rgb:"B4C6E7"}};
-          cell.s.font={name:'Arial',sz:10,bold:true};
-          cell.s.alignment={horizontal:'center',vertical:'center',wrapText:true};
-        }
-      }
-    }
-    
-    XLSX.utils.book_append_sheet(wb,ws,"Late Report");
-    const fileName="Late_Report_Filled_"+(RD||"unknown").replace(/-/g,"")+".xlsx";
-    XLSX.writeFile(wb,fileName);
-    showT("✓ Exported successfully!");
-  } catch(error) {
-    console.error('Export error:', error);
-    showT("❌ Export failed: "+error.message);
-  }
+function expX(){
+  if(!ORD.length){showT("No data");return}
+  const hd=["Inspection date","QIMA Ref.","Client name","Reports","Last Day Of Inspection","Days","Report status actions detailed","Responsible","Responsible name","Leader","Due date"];
+  const aligns=["center","center","left","center","center","center","left","center","center","center","center"];
+  const rows=ORD.map(o=>[fmtMMDDYY(o.insDate),o.ref,o.client,o.reports||"",fmtMMDDYY(o.lastDay),o.days,sDetail(o),effResp(o),rName(o),ldr(o),fmtMMDDYY(RD)]);
+  const wb=XLSX.utils.book_new(),ws=XLSX.utils.aoa_to_sheet([hd,...rows]);
+  ws['!cols']=[{wch:12},{wch:20},{wch:50},{wch:8},{wch:14},{wch:7},{wch:55},{wch:16},{wch:40},{wch:24},{wch:12}];
+  const ref=XLSX.utils.decode_range(ws['!ref']);
+  for(let R=ref.s.r;R<=ref.e.r;R++){for(let C=ref.s.c;C<=ref.e.c;C++){const cell=ws[XLSX.utils.encode_cell({r:R,c:C})];if(!cell)continue;cell.s={font:{name:'Arial',sz:10},alignment:{horizontal:aligns[C],vertical:'center',wrapText:true},border:{top:{style:'thin',color:{auto:1}},bottom:{style:'thin',color:{auto:1}},left:{style:'thin',color:{auto:1}},right:{style:'thin',color:{auto:1}}}};if(R===0){cell.s.fill={fgColor:{rgb:"B4C6E7"}};cell.s.font={name:'Arial',sz:10,bold:true};cell.s.alignment={horizontal:'center',vertical:'center',wrapText:true}}}}
+  XLSX.utils.book_append_sheet(wb,ws,"Late Report");const fn="Late_Report_Filled_"+(RD||"unknown").replace(/-/g,"")+".xlsx";XLSX.writeFile(wb,fn);showT("Exported!")
 }
 
 function rOff(){const s=document.getElementById("filterOffice"),os=[...new Set(ORD.map(o=>(o.office||"").trim()).filter(Boolean))].sort();s.innerHTML='<option value="">All Offices</option>'+os.map(o=>'<option value="'+esc(o)+'">'+esc(o)+'</option>').join("")}
@@ -257,14 +197,14 @@ function rR(rf){const o=ORD.find(x=>x.ref===rf);if(!o)return;const tr=document.q
 function uReason(rf,v){const o=ORD.find(x=>x.ref===rf);if(!o)return;o.reason=v;o.responsible=ISOTH(v)?"":autoResp(v);o.itlpm="";rR(rf);saveC()}
 function uResp(rf,v){const o=ORD.find(x=>x.ref===rf);if(!o)return;o.responsible=v;o.itlpm="";rR(rf);saveC()}
 function uF(rf,f,v){const o=ORD.find(x=>x.ref===rf);if(!o)return;o[f]=v;it=true;const tr=document.querySelector('tr[data-ref="'+CSS.escape(rf)+'"]');if(!tr)return;const fl=isFilled(o),io=ISOTH(o.reason);fl?tr.classList.add("filled"):tr.classList.remove("filled");if(f==="comment"){const inp=tr.querySelector(".comment-inp");if(inp&&io){const ce=!(o.comment||"").trim();inp.classList.toggle("error",ce);const w=inp.nextElementSibling;if(w)w.classList.toggle("show",ce)}}if(f==="itlpm"){const inp=tr.querySelector(".itlpm-inp");if(inp){const ie=!(o.itlpm||"").trim();inp.classList.toggle("error",ie);const w=inp.nextElementSibling;if(w)w.classList.toggle("show",ie)}}const st=tr.querySelector(".status-dot+span");if(st)st.textContent=fl?"Filled":"Pending";uS();clearTimeout(dt);dt=setTimeout(()=>{it=false;saveC()},2000)}
-function applyFilters(){const of=document.getElementById("filterOffice").value.trim().toLowerCase(),rs=document.getElementById("filterResponsible").value.trim(),st=document.getElementById("filterStatus").value.trim().toLowerCase(),df=document.getElementById("filterDays").value.trim().toLowerCase(),kw=document.getElementById("searchBox").value.trim().toLowerCase();flt=ORD.filter(o=>{const om=!of||(o.office||"").toLowerCase()===of,rm=!rs||effResp(o)===rs,sm=!st||(st==="filled"?isFilled(o):!isFilled(o)),dm=!df||(df==="orange"?o.days>=7:df==="yellow"?o.days>=3&&o.days<=6:o.days<=2),km=!kw||(o.ref+" "+o.client+" "+o.insp+" "+o.office).toLowerCase().includes(kw);return om&&rm&&sm&&dm&&km});rT(flt)}
+function applyF(){const of=document.getElementById("filterOffice").value.trim().toLowerCase(),rs=document.getElementById("filterResponsible").value.trim(),st=document.getElementById("filterStatus").value.trim().toLowerCase(),df=document.getElementById("filterDays").value.trim().toLowerCase(),kw=document.getElementById("searchBox").value.trim().toLowerCase();flt=ORD.filter(o=>{const om=!of||(o.office||"").toLowerCase()===of,rm=!rs||effResp(o)===rs,sm=!st||(st==="filled"?isFilled(o):!isFilled(o)),dm=!df||(df==="orange"?o.days>=7:df==="yellow"?o.days>=3&&o.days<=6:o.days<=2),km=!kw||(o.ref+" "+o.client+" "+o.insp+" "+o.office).toLowerCase().includes(kw);return om&&rm&&sm&&dm&&km});rT(flt)}
 function uS(){const t=ORD.length,f=ORD.filter(isFilled).length;document.getElementById("statTotal").textContent=t;document.getElementById("statFilled").textContent=f;document.getElementById("statPending").textContent=t-f;document.getElementById("statOrange").textContent=ORD.filter(o=>o.days>=7).length;document.getElementById("progressLabel").textContent=f+"/"+t+" filled";document.getElementById("progressFill").style.width=t?f/t*100+"%":"0%"}
 function genE(){const r=ORD.filter(isFilled);if(!r.length)return"No filled orders yet.";let t="Subject: Late Report Update - "+RD+"\n\nDear Team,\n\n";r.forEach((o,i)=>{const er=ISOTH(o.reason)?o.responsible:autoResp(o.reason),it=itlpmInfo(o.office,er),pm=it.m==="man"?(o.itlpm||"-"):(it.v||"-");t+=(i+1)+". "+o.ref+"\n   Client: "+o.client+"\n   Last Day: "+o.lastDay+"\n   Days: "+o.days+"\n   Insp: "+(o.insp||"-")+"\n   Office: "+(o.office||"-")+"\n   ITL/PM: "+pm+"\n   Reason: "+(o.reason||"-")+"\n   Comment: "+(o.comment||"-")+"\n   Responsible: "+(er||"-")+"\n\n"});return t+"Best regards,\nITL"}
 function openSubmitModal(){if(!ORD.length){showT("Upload first");return}document.getElementById("emailPreview").textContent=genE();document.getElementById("submitModal").classList.add("open")}
 function closeModal(){document.getElementById("submitModal").classList.remove("open")}
 function copyEmail(){navigator.clipboard.writeText(document.getElementById("emailPreview").textContent).then(()=>showT("Copied!")).catch(()=>showT("Failed"))}
-async function saveC(){if(sv)return;sv=true;sUI("s","Saving...");try{const b=JSON.stringify({reportDate:RD,fileName:document.getElementById("uploadStatus").textContent.replace("📄 ",""),orders:ORD});const r=await fetch(API,{method:"PUT",headers:HDR_WR,body:b});if(!r.ok)throw Error(r.status);lh=hsh(ORD);sUI("o","Saved ✓")}catch(e){sUI("e","Save failed")}}
-async function pollC(){if(it){sUI("o","Synced");return}try{const r=await fetch(API+"/latest",{headers:HDR_RD});if(!r.ok)throw Error(r.status);const j=await r.json(),rc=j.record||{};if(!rc.orders||!rc.orders.length){sUI("o","Connected");return}const rh=hsh(rc.orders);if(rh===lh){sUI("o","Synced");return}lh=rh;if(ORD.length===0){ORD=rc.orders;RD=rc.reportDate||"";document.getElementById("headerDate").textContent=RD||"—";document.getElementById("uploadStatus").textContent=rc.fileName?"📄 "+rc.fileName:"";flt=[...ORD];rOff();document.getElementById("exportBtn").disabled=false}else{rc.orders.forEach(co=>{const lo=ORD.find(o=>o.ref===co.ref);if(lo){lo.reason=co.reason||"";lo.comment=co.comment||"";lo.responsible=co.responsible||"";lo.itlpm=co.itlpm||""}})}applyFilters();sUI("o","Synced")}catch(e){sUI("e","Sync error")}}
+async function saveC(){if(sv)return;sv=true;sUI("s","Saving...");try{const b=JSON.stringify({reportDate:RD,fileName:document.getElementById("uploadStatus").textContent.replace("📄 ",""),orders:ORD});const r=await fetch(API,{method:"PUT",headers:HDR_WR,body:b});if(!r.ok)throw Error(r.status);lh=hsh(ORD);sUI("o","Saved ✓")}catch(e){sUI("e","Save failed")}finally{sv=false}}
+async function pollC(){if(it){sUI("o","Synced");return}try{const r=await fetch(API+"/latest",{headers:HDR_RD});if(!r.ok)throw Error(r.status);const j=await r.json(),rc=j.record||{};if(!rc.orders||!rc.orders.length){sUI("o","Connected");return}const rh=hsh(rc.orders);if(rh===lh){sUI("o","Synced");return}lh=rh;if(ORD.length===0){ORD=rc.orders;RD=rc.reportDate||"";document.getElementById("headerDate").textContent=RD||"—";document.getElementById("uploadStatus").textContent=rc.fileName?"📄 "+rc.fileName:"";flt=[...ORD];rOff();document.getElementById("exportBtn").disabled=false}else{rc.orders.forEach(co=>{const lo=ORD.find(o=>o.ref===co.ref);if(lo){lo.reason=co.reason||"";lo.comment=co.comment||"";lo.responsible=co.responsible||"";lo.itlpm=co.itlpm||""}})}applyF();sUI("o","Synced")}catch(e){sUI("e","Sync error")}}
 window.onclick=e=>{if(e.target===document.getElementById("submitModal"))closeModal();if(e.target===document.getElementById("dateModal"))cancelUpload()};
 sUI("s","Connecting...");pollC();pt=setInterval(pollC,POLL_MS);
 </script>
